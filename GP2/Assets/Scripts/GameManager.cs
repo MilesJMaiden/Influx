@@ -1,36 +1,54 @@
-using UnityEngine;
-using System.Collections.Generic;
+//using UnityEngine;
 
-public class GameManager : MonoBehaviour
-{
-    public GameObject floorPrefab, wallPrefab, doorPrefab, windowWallPrefab, wallDisplayPrefab;
-    public GameObject containerPrefab, computerPrefab;
+//public class GameManager : MonoBehaviour
+//{
+//    [Header("Prefabs")]
+//    [SerializeField] private GameObject floorPrefab;
+//    [SerializeField] private GameObject wallPrefab;
+//    [SerializeField] private GameObject doorPrefab;
+//    [SerializeField] private GameObject windowWallPrefab;
+//    [SerializeField] private GameObject wallDisplayPrefab;
+//    [SerializeField] private GameObject containerPrefab;
+//    [SerializeField] private GameObject computerPrefab;
 
-    private RoomGenerator roomGenerator;
-    private RoomObjectSpawner objectSpawner;
+//    // Using interfaces allows swapping implementations later
+//    private IRoomGenerator roomGenerator;
+//    private IRoomObjectSpawner objectSpawner;
 
-    private void Start()
-    {
-        // Initialize object pools
-        ObjectPool floorPool = new ObjectPool(floorPrefab, transform, 100);
-        ObjectPool wallPool = new ObjectPool(wallPrefab, transform, 50);
-        ObjectPool windowWallPool = new ObjectPool(windowWallPrefab, transform, 10);
-        ObjectPool doorPool = new ObjectPool(doorPrefab, transform, 4);
-        ObjectPool wallDisplayPool = new ObjectPool(wallDisplayPrefab, transform, 10);
+//    private void Start()
+//    {
+//        // Create object pools using a simple factory method (or dependency injection if available)
+//        ObjectPool floorPool = new ObjectPool(floorPrefab, transform, 100);
+//        ObjectPool wallPool = new ObjectPool(wallPrefab, transform, 50);
+//        ObjectPool windowWallPool = new ObjectPool(windowWallPrefab, transform, 10);
+//        ObjectPool doorPool = new ObjectPool(doorPrefab, transform, 4);
+//        ObjectPool wallDisplayPool = new ObjectPool(wallDisplayPrefab, transform, 10);
+//        ObjectPool containerPool = new ObjectPool(containerPrefab, transform, 10);
+//        ObjectPool computerPool = new ObjectPool(computerPrefab, transform, 10);
 
-        ObjectPool containerPool = new ObjectPool(containerPrefab, transform, 10);
-        ObjectPool computerPool = new ObjectPool(computerPrefab, transform, 10);
+//        // Inject dependencies into the room generator
+//        roomGenerator = new RoomGenerator(
+//            width: 5,
+//            height: 5,
+//            floorPool: floorPool,
+//            wallPool: wallPool,
+//            windowWallPool: windowWallPool,
+//            doorPool: doorPool,
+//            wallDisplayPool: wallDisplayPool,
+//            connections: new RoomConnections(top: false, bottom: false, left: false, right: false)
+//        );
 
-        // Generate the room
-        roomGenerator = new RoomGenerator(5, 5, floorPool, wallPool, windowWallPool, doorPool, wallDisplayPool);
-        roomGenerator.GenerateRoom();
+//        roomGenerator.GenerateRoom();
 
-        // Get window wall positions
-        HashSet<Vector3> windowWallPositions = roomGenerator.GetWindowWallPositions();
+//        // Inject dependencies into the object spawner using 'width' and 'height' parameter names
+//        objectSpawner = new RoomObjectSpawner(
+//            width: 5,
+//            height: 5,
+//            containerPool: containerPool,
+//            computerPool: computerPool,
+//            wallDisplayPool: wallDisplayPool,
+//            windowWallPositions: roomGenerator.GetWindowWallPositions());
 
-        // Pass windowWallPositions to RoomObjectSpawner
-        objectSpawner = new RoomObjectSpawner(5, 5, containerPool, computerPool, wallDisplayPool, windowWallPositions);
-
-        objectSpawner.SpawnObjects();
-    }
-}
+//        objectSpawner.SpawnObjects();
+//    }
+//}

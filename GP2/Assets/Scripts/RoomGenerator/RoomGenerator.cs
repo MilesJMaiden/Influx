@@ -1,9 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-/// <summary>
-/// Responsible for generating the room structure (Floors, Walls, Doors, Window Walls).
-/// </summary>
 public class RoomGenerator : IRoomGenerator
 {
     private readonly int gridWidth;
@@ -14,7 +11,9 @@ public class RoomGenerator : IRoomGenerator
     private readonly ObjectPool doorPool;
     private readonly ObjectPool wallDisplayPool;
     private readonly Dictionary<Vector2Int, GameObject> spawnedTiles;
-    private readonly HashSet<Vector3> windowWallPositions = new(); // Stores window wall positions
+    private readonly HashSet<Vector3> windowWallPositions = new();
+
+    private readonly RoomConnections connections;
 
     private const int TileSize = 5;
     private const float FloorYPosition = -1.5f;
@@ -23,34 +22,30 @@ public class RoomGenerator : IRoomGenerator
     public RoomGenerator(
         int width,
         int height,
-        ObjectPool floor,
-        ObjectPool wall,
-        ObjectPool windowWall,
-        ObjectPool door,
-        ObjectPool wallDisplay)
+        ObjectPool floorPool,
+        ObjectPool wallPool,
+        ObjectPool windowWallPool,
+        ObjectPool doorPool,
+        ObjectPool wallDisplayPool,
+        RoomConnections connections)
     {
         gridWidth = width;
         gridHeight = height;
-        floorPool = floor;
-        wallPool = wall;
-        windowWallPool = windowWall;
-        doorPool = door;
-        wallDisplayPool = wallDisplay;
+        this.floorPool = floorPool;
+        this.wallPool = wallPool;
+        this.windowWallPool = windowWallPool;
+        this.doorPool = doorPool;
+        this.wallDisplayPool = wallDisplayPool;
+        this.connections = connections;
         spawnedTiles = new Dictionary<Vector2Int, GameObject>();
     }
 
-    /// <summary>
-    /// Generates the room structure.
-    /// </summary>
     public void GenerateRoom()
     {
         GenerateFloors();
         GeneratePerimeterWalls();
     }
 
-    /// <summary>
-    /// Returns the set of window wall positions.
-    /// </summary>
     public HashSet<Vector3> GetWindowWallPositions()
     {
         return windowWallPositions;
@@ -62,7 +57,7 @@ public class RoomGenerator : IRoomGenerator
         {
             for (int y = 0; y < gridHeight; y++)
             {
-                Vector2Int position = new Vector2Int(x, y);
+                Vector2Int position = new(x, y);
                 SpawnTile(floorPool, position, new Vector3(0, FloorYPosition, 0));
             }
         }
@@ -70,52 +65,55 @@ public class RoomGenerator : IRoomGenerator
 
     private void GeneratePerimeterWalls()
     {
-        Vector2Int topDoorPos = new Vector2Int(gridWidth / 2, gridHeight);
-        Vector2Int bottomDoorPos = new Vector2Int(gridWidth / 2, -1);
-        Vector2Int leftDoorPos = new Vector2Int(-1, gridHeight / 2);
-        Vector2Int rightDoorPos = new Vector2Int(gridWidth, gridHeight / 2);
+        Vector2Int topDoorPos = new(gridWidth / 2, gridHeight);
+        Vector2Int bottomDoorPos = new(gridWidth / 2, -1);
+        Vector2Int leftDoorPos = new(-1, gridHeight / 2);
+        Vector2Int rightDoorPos = new(gridWidth, gridHeight / 2);
 
-        for (int x = -1; x <= gridWidth; x++)
+        for (int x = 0; x <= gridWidth - 1; x++)
         {
-            bool useWindow = Random.value > 0.7f;
-            SpawnPerimeterWall(x, gridHeight, topDoorPos, Vector3.forward * WallOffset, useWindow);
-            SpawnPerimeterWall(x, -1, bottomDoorPos, Vector3.back * WallOffset, useWindow);
+            bool forceDoorTop = (x == topDoorPos.x) && connections.top;
+            SpawnPerimeterWall(x, gridHeight, topDoorPos, Vector3.forward * WallOffset, forceDoorTop);
+            bool forceDoorBottom = (x == bottomDoorPos.x) && connections.bottom;
+            SpawnPerimeterWall(x, -1, bottomDoorPos, Vector3.back * WallOffset, forceDoorBottom);
         }
 
         for (int y = 0; y < gridHeight; y++)
         {
-            bool useWindow = Random.value > 0.7f;
-            SpawnPerimeterWall(-1, y, leftDoorPos, Vector3.left * WallOffset, useWindow, Quaternion.Euler(0, 90, 0));
-            SpawnPerimeterWall(gridWidth, y, rightDoorPos, Vector3.right * WallOffset, useWindow, Quaternion.Euler(0, 90, 0));
+            bool forceDoorLeft = (y == leftDoorPos.y) && connections.left;
+            SpawnPerimeterWall(-1, y, leftDoorPos, Vector3.left * WallOffset, forceDoorLeft, Quaternion.Euler(0, 90, 0));
+            bool forceDoorRight = (y == rightDoorPos.y) && connections.right;
+            SpawnPerimeterWall(gridWidth, y, rightDoorPos, Vector3.right * WallOffset, forceDoorRight, Quaternion.Euler(0, 90, 0));
         }
     }
 
-    private void SpawnPerimeterWall(int x, int y, Vector2Int doorPos, Vector3 offset, bool useWindow, Quaternion rotation = default)
+    private void SpawnPerimeterWall(int x, int y, Vector2Int doorPos, Vector3 offset, bool forceDoor, Quaternion rotation = default)
     {
-        Vector2Int wallPos = new Vector2Int(x, y);
+        Vector2Int wallPos = new(x, y);
         if (x == doorPos.x && y == doorPos.y)
         {
-            SpawnTile(doorPool, wallPos, offset, rotation);
+            if (forceDoor)
+                return;
+            else
+                SpawnTile(wallPool, wallPos, offset, rotation);
         }
         else
         {
+            bool useWindow = Random.value > 0.7f;
             ObjectPool selectedPool = useWindow ? windowWallPool : wallPool;
             GameObject wall = SpawnTile(selectedPool, wallPos, offset, rotation);
             if (wall != null && useWindow)
-            {
-                windowWallPositions.Add(wall.transform.position); // Store window wall position
-            }
+                windowWallPositions.Add(wall.transform.position);
         }
     }
 
     private GameObject SpawnTile(ObjectPool pool, Vector2Int gridPos, Vector3 offset, Quaternion rotation = default)
     {
         if (spawnedTiles.ContainsKey(gridPos)) return null;
-
-        Vector3 worldPosition = new Vector3(gridPos.x * TileSize, 0, gridPos.y * TileSize) + offset;
+        Vector3 localPosition = new Vector3(gridPos.x * TileSize, 0, gridPos.y * TileSize) + offset;
         GameObject obj = pool.Get();
-        obj.transform.position = worldPosition;
-        obj.transform.rotation = rotation;
+        obj.transform.localPosition = localPosition;
+        obj.transform.localRotation = rotation;
         spawnedTiles.Add(gridPos, obj);
         return obj;
     }

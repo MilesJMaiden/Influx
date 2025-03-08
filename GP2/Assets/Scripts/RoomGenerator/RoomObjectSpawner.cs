@@ -1,91 +1,101 @@
-using System.Collections.Generic;
+ï»¿using System.Collections.Generic;
+using System.Linq;
+using Unity.AI.Navigation;
 using UnityEngine;
 
-/// <summary>
-/// Spawns objects in the room based on logical placement rules.
-/// </summary>
-public class RoomObjectSpawner
+public class RoomObjectSpawner : IRoomObjectSpawner
 {
+    private const float TileSize = 5f;
+    // How far inside the room wall displays should be offset from the wall (in world units)
+    private const float displayInset = 0.5f;
+    // Extra offsets based on rotation.
+    private const float offsetForNeg90 = 3f;   // For Y rotation -90 (or 270)
+    private const float offsetFor180 = 3f;     // For Y rotation -180 (or 180)
+    private const float offsetFor90 = 2f;      // For Y rotation 90
+    private const float offsetFor0 = 2f;       // For Y rotation 0
+    // Vertical offset to raise displays off the floor.
+    private const float WallDisplayHeight = 2.5f;
+
     private readonly ObjectPool containerPool;
     private readonly ObjectPool computerPool;
     private readonly ObjectPool wallDisplayPool;
-    private readonly HashSet<Vector3> windowWallPositions;
-    private readonly int gridWidth;
-    private readonly int gridHeight;
+    // We'll no longer pass windowWallPositions; initialize empty.
+    private readonly HashSet<Vector3> windowWallPositions = new HashSet<Vector3>();
+
+    private readonly int width;  // room width in tiles
+    private readonly int height; // room height in tiles
+
+    // Candidate positions in local room space.
     private readonly List<(Vector3 position, Quaternion rotation, bool isHorizontal)> wallPositions = new();
     private readonly List<Vector3> cornerPositions = new();
     private readonly List<Vector3> computerPositions = new();
 
-    private const float ObjectHeight = 1f;
-    private const float WallDisplayHeight = 2.5f;
-    private const float WallDisplayOffset = -1f;
-    private const float HorizontalWallDisplayZOffset = 2f;
-    private const float VerticalWallDisplayXOffset = 1f;
-
     public RoomObjectSpawner(
         int width,
         int height,
-        ObjectPool container,
-        ObjectPool computer,
-        ObjectPool wallDisplay,
-        HashSet<Vector3> windowWalls)
+        ObjectPool containerPool,
+        ObjectPool computerPool,
+        ObjectPool wallDisplayPool)
     {
-        gridWidth = width;
-        gridHeight = height;
-        containerPool = container;
-        computerPool = computer;
-        wallDisplayPool = wallDisplay;
-        windowWallPositions = windowWalls; // Store window wall positions to avoid placing displays on them
-
+        this.width = width;
+        this.height = height;
+        this.containerPool = containerPool;
+        this.computerPool = computerPool;
+        this.wallDisplayPool = wallDisplayPool;
         CachePossiblePositions();
     }
 
     /// <summary>
-    /// Determines all suitable object placements.
+    /// Computes candidate positions for wall displays, containers, and computers based on the room's dimensions.
+    /// Room local coordinates span from (0,0) (bottom-left) to (width*TileSize, height*TileSize) (top-right).
+    /// Positions are inset by displayInset.
     /// </summary>
     private void CachePossiblePositions()
     {
-        for (int x = -1; x <= gridWidth; x++)
-        {
-            Vector3 topWallPos = new(x * 5, 0, gridHeight * 5 - 2.5f);
-            Vector3 bottomWallPos = new(x * 5, 0, -2.5f);
+        wallPositions.Clear();
+        cornerPositions.Clear();
+        computerPositions.Clear();
 
-            // Top wall: Facing inward (0°), Bottom wall: Facing inward (180°)
+        float roomWidthWorld = width * TileSize;
+        float roomHeightWorld = height * TileSize;
+
+        // Top wall: candidate positions along the top edge, inset inward.
+        for (int i = 0; i < width; i++)
+        {
+            Vector3 topWallPos = new Vector3((i + 0.5f) * TileSize, 0, roomHeightWorld - displayInset);
+            Vector3 bottomWallPos = new Vector3((i + 0.5f) * TileSize, 0, displayInset);
+            // For top wall, we set rotation to 0 (weâ€™ll later apply extra offset for Y==0)
             wallPositions.Add((topWallPos, Quaternion.Euler(0, 0, 0), true));
+            // For bottom wall, use rotation 180.
             wallPositions.Add((bottomWallPos, Quaternion.Euler(0, 180, 0), true));
         }
 
-        for (int y = 0; y < gridHeight; y++)
+        // Left and right walls.
+        for (int j = 0; j < height; j++)
         {
-            Vector3 leftWallPos = new(-2.5f, 0, y * 5);
-            Vector3 rightWallPos = new(gridWidth * 5 - 2.5f, 0, y * 5);
-
-            // Left wall: Facing right (90°), Right wall: Facing left (-90°)
+            Vector3 leftWallPos = new Vector3(displayInset, 0, (j + 0.5f) * TileSize);
+            Vector3 rightWallPos = new Vector3(roomWidthWorld - displayInset, 0, (j + 0.5f) * TileSize);
+            // For left wall, rotation 90.
             wallPositions.Add((leftWallPos, Quaternion.Euler(0, 90, 0), false));
+            // For right wall, rotation -90 (or 270).
             wallPositions.Add((rightWallPos, Quaternion.Euler(0, -90, 0), false));
         }
 
-        // Find corner positions for containers
-        cornerPositions.Add(new Vector3(-2.5f, 0, -2.5f));
-        cornerPositions.Add(new Vector3(-2.5f, 0, (gridHeight - 1) * 5 - 2.5f));
-        cornerPositions.Add(new Vector3((gridWidth - 1) * 5 - 2.5f, 0, -2.5f));
-        cornerPositions.Add(new Vector3((gridWidth - 1) * 5 - 2.5f, 0, (gridHeight - 1) * 5 - 2.5f));
+        // Corners.
+        cornerPositions.Add(new Vector3(displayInset, 0, displayInset));                              // bottom-left
+        cornerPositions.Add(new Vector3(displayInset, 0, roomHeightWorld - displayInset));              // top-left
+        cornerPositions.Add(new Vector3(roomWidthWorld - displayInset, 0, displayInset));               // bottom-right
+        cornerPositions.Add(new Vector3(roomWidthWorld - displayInset, 0, roomHeightWorld - displayInset)); // top-right
 
-        // Find computer placements (against walls but not in corners)
-        for (int x = 1; x < gridWidth - 1; x++)
-        {
-            computerPositions.Add(new Vector3(x * 5, 0, -2.5f + 1));
-            computerPositions.Add(new Vector3(x * 5, 0, (gridHeight - 1) * 5 - 2.5f - 1));
-        }
-        for (int y = 1; y < gridHeight - 1; y++)
-        {
-            computerPositions.Add(new Vector3(-2.5f + 1, 0, y * 5));
-            computerPositions.Add(new Vector3((gridWidth - 1) * 5 - 2.5f - 1, 0, y * 5));
-        }
+        // Computers: one per wall (offset inward by 1 unit).
+        computerPositions.Add(new Vector3(roomWidthWorld / 2f, 0, 1));                                 // bottom wall
+        computerPositions.Add(new Vector3(roomWidthWorld / 2f, 0, roomHeightWorld - 1));                   // top wall
+        computerPositions.Add(new Vector3(1, 0, roomHeightWorld / 2f));                                 // left wall
+        computerPositions.Add(new Vector3(roomWidthWorld - 1, 0, roomHeightWorld / 2f));                  // right wall
     }
 
     /// <summary>
-    /// Spawns objects in the room with logical placement.
+    /// Spawns all objects in the room using the cached candidate positions.
     /// </summary>
     public void SpawnObjects()
     {
@@ -94,72 +104,100 @@ public class RoomObjectSpawner
         SpawnComputers();
     }
 
+    /// <summary>
+    /// Spawns wall displays at candidate positions.
+    /// Applies extra positional offsets based on the displayâ€™s Y rotation.
+    /// </summary>
     private void SpawnWallDisplays()
     {
-        foreach (var (wallPos, wallRotation, isHorizontal) in wallPositions)
+        foreach (var (pos, rotation, isHorizontal) in wallPositions)
         {
-            if (windowWallPositions.Contains(wallPos)) continue; // Skip window walls
+            if (Random.value < 0.5f)
+                continue;
+            GameObject display = wallDisplayPool.Get();
+            // Start with a vertical offset so the display is raised.
+            Vector3 adjustedPos = pos + new Vector3(0, WallDisplayHeight, 0);
 
-            if (Random.value > 0.5f) // 50% chance to place a display
+            // Apply extra offsets based on the Y rotation.
+            float yRot = rotation.eulerAngles.y;
+            // Using Mathf.Approximately to compare floating-point values.
+            if (Mathf.Approximately(yRot, 270f) || Mathf.Approximately(yRot, -90f))
             {
-                GameObject display = wallDisplayPool.Get();
-
-                Vector3 adjustedPosition = isHorizontal
-                    ? wallPos + new Vector3(0, WallDisplayHeight, HorizontalWallDisplayZOffset)
-                    : wallPos + new Vector3(VerticalWallDisplayXOffset, WallDisplayHeight, 0);
-
-                display.transform.position = adjustedPosition;
-                display.transform.rotation = wallRotation;
+                // For displays with Y rotation -90, lower X by 3.
+                adjustedPos.x -= 3f;
             }
+            else if (Mathf.Approximately(yRot, 180f))
+            {
+                // For displays with Y rotation -180 (or 180), lower Z by 3.
+                adjustedPos.z -= 3f;
+            }
+            else if (Mathf.Approximately(yRot, 90f))
+            {
+                // For displays with Y rotation 90, lower X by 2.
+                adjustedPos.x -= 2f;
+            }
+            else if (Mathf.Approximately(yRot, 0f))
+            {
+                // For displays with Y rotation 0, lower Z by 2.
+                adjustedPos.z -= 2f;
+            }
+
+            display.transform.localPosition = adjustedPos;
+            display.transform.localRotation = rotation;
         }
     }
 
+    /// <summary>
+    /// Spawns containers at the room's corner positions.
+    /// </summary>
     private void SpawnContainers()
     {
-        foreach (var cornerPos in cornerPositions)
+        foreach (Vector3 pos in cornerPositions)
         {
-            if (Random.value > 0.7f)
+            if (Random.value < 0.3f)
             {
                 GameObject container = containerPool.Get();
-                container.transform.position = cornerPos;
-            }
-        }
-    }
-
-    private void SpawnComputers()
-    {
-        foreach (var compPos in computerPositions)
-        {
-            if (Random.value > 0.5f)
-            {
-                GameObject computer = computerPool.Get();
-                computer.transform.position = compPos;
-                computer.transform.rotation = GetComputerRotation(compPos);
+                container.transform.localPosition = pos;
             }
         }
     }
 
     /// <summary>
-    /// Determines the correct rotation for a computer based on its wall proximity.
-    /// Ensures computers always face into the room.
+    /// Spawns computers at candidate positions along the walls.
     /// </summary>
-    private Quaternion GetComputerRotation(Vector3 position)
+    private void SpawnComputers()
     {
-        float x = position.x;
-        float z = position.z;
+        foreach (Vector3 pos in computerPositions)
+        {
+            if (Random.value < 0.5f)
+            {
+                GameObject computer = computerPool.Get();
+                computer.transform.localPosition = pos;
+                computer.transform.localRotation = GetComputerRotation(pos);
+            }
+        }
+    }
 
-        // Bottom wall (computers face inward)
-        if (Mathf.Abs(z - (-2.5f + 1)) < 0.1f) return Quaternion.Euler(0, 0, 0);
-
-        // Top wall (computers face inward)
-        if (Mathf.Abs(z - ((gridHeight - 1) * 5 - 2.5f - 1)) < 0.1f) return Quaternion.Euler(0, 180, 0);
-
-        // Left wall (computers face inward)
-        if (Mathf.Abs(x - (-2.5f + 1)) < 0.1f) return Quaternion.Euler(0, 90, 0);
-
-        // Right wall (computers face inward)
-        if (Mathf.Abs(x - ((gridWidth - 1) * 5 - 2.5f - 1)) < 0.1f) return Quaternion.Euler(0, -90, 0);
-
+    /// <summary>
+    /// Determines the rotation for a computer so that it faces inward based on its local position.
+    /// </summary>
+    private Quaternion GetComputerRotation(Vector3 pos)
+    {
+        float roomWidthWorld = width * TileSize;
+        float roomHeightWorld = height * TileSize;
+        float bottomDist = pos.z;
+        float topDist = roomHeightWorld - pos.z;
+        float leftDist = pos.x;
+        float rightDist = roomWidthWorld - pos.x;
+        float minDist = Mathf.Min(bottomDist, topDist, leftDist, rightDist);
+        if (minDist == bottomDist)
+            return Quaternion.Euler(0, 0, 0);
+        if (minDist == topDist)
+            return Quaternion.Euler(0, 180, 0);
+        if (minDist == leftDist)
+            return Quaternion.Euler(0, 90, 0);
+        if (minDist == rightDist)
+            return Quaternion.Euler(0, -90, 0);
         return Quaternion.identity;
     }
 }
