@@ -12,8 +12,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f3c0ea64e217efa47982a228f9f8be55, type: 3}
   m_Name: LevelDesignSettings
   m_EditorClassIdentifier: 
-  roomCount: 10
-  roomSpacing: 30
   defaultRoomShape: 1
   probabilitySquare: 0.5
   probabilityLShaped: 0.4
@@ -22,3 +20,9 @@ MonoBehaviour:
   minRoomSize: {x: 4, y: 4}
   maxRoomSize: {x: 8, y: 8}
   connectionProbability: 1
+  roomSpawnSettings:
+  - roomIdentifier: TEST
+    spawnPrefabs:
+    - {fileID: 6992367028099511134, guid: b6ec086cdc52e6744919fe910cdc79c0, type: 3}
+    - {fileID: 2381596440433889247, guid: 55f3f20f1a98ffc448344b01b1f6255a, type: 3}
+    - {fileID: 3920076611295411707, guid: 9bab78c4b75730f4b9f78fe020f992f0, type: 3}

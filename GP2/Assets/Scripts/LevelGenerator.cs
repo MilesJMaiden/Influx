@@ -8,7 +8,7 @@ public enum DoorDirection { Top, Bottom, Left, Right }
 public class LevelGenerator : MonoBehaviour
 {
     [Header("Design Settings")]
-    public LevelDesignSettings designSettings; // Settings asset with roomCount, probabilities, room sizes, etc.
+    public LevelDesignSettings designSettings; // Contains spawn settings, dimensions, and connection probabilities.
 
     [Header("Prefabs")]
     public GameObject floorPrefab;
@@ -21,7 +21,7 @@ public class LevelGenerator : MonoBehaviour
     public GameObject floorQuadPrefab;
 
     [Header("Layout Settings")]
-    // The gap (in world units) to insert between rooms – which will be filled by corridor rooms.
+    // The gap (in world units) between rooms – filled by corridor rooms.
     public float corridorWidth = 5f;
 
     // Constant: world units per tile.
@@ -30,14 +30,15 @@ public class LevelGenerator : MonoBehaviour
     // List of generated room data.
     private List<RoomData> rooms;
 
-    // For centering rooms in cells.
+    // For centering rooms in grid cells.
     private Dictionary<int, float> columnWidths;
     private Dictionary<int, float> rowHeights;
 
     private void Start()
     {
-        // Generate rooms using a growing-tree algorithm.
-        rooms = GenerateRooms(designSettings.roomCount);
+        // Use the number of spawn settings as the room count.
+        int roomCount = designSettings.roomSpawnSettings.Length;
+        rooms = GenerateRooms(roomCount);
         Dictionary<RoomData, Vector3> basePositions = ComputeBasePositions(rooms);
         Dictionary<RoomData, Vector3> roomPositions = ComputeRoomPositions(rooms, basePositions);
 
@@ -49,8 +50,9 @@ public class LevelGenerator : MonoBehaviour
         corridorContainer.transform.parent = levelContainer.transform;
 
         Dictionary<RoomData, Transform> roomLookup = new Dictionary<RoomData, Transform>();
-        foreach (RoomData room in rooms)
+        for (int i = 0; i < rooms.Count; i++)
         {
+            RoomData room = rooms[i];
             // Create room container.
             GameObject roomContainer = new GameObject("Room_" + room.gridPosition.x + "_" + room.gridPosition.y);
             roomContainer.transform.parent = levelContainer.transform;
@@ -60,7 +62,6 @@ public class LevelGenerator : MonoBehaviour
             // Compute room size.
             float roomWidth = room.dimensions.x * TileSize;
             float roomHeight = room.dimensions.y * TileSize;
-            // Generate the floor quad.
             RoomFloorGenerator floorGen = new RoomFloorGenerator(floorQuadPrefab, roomContainer.transform, roomWidth, roomHeight);
             floorGen.GenerateFloor();
 
@@ -71,6 +72,7 @@ public class LevelGenerator : MonoBehaviour
             ObjectPool roomDoorPool = new ObjectPool(doorPrefab, roomContainer.transform, 4);
             ObjectPool roomWallDisplayPool = new ObjectPool(wallDisplayPrefab, roomContainer.transform, 10);
 
+            // Generate room geometry.
             RoomGenerator roomGen = new RoomGenerator(
                 width: (int)room.dimensions.x,
                 height: (int)room.dimensions.y,
@@ -82,21 +84,27 @@ public class LevelGenerator : MonoBehaviour
                 connections: room.connections);
             roomGen.GenerateRoom();
 
+            // Use the spawn settings for this room.
+            RoomSpawnSettings spawnSettings = designSettings.roomSpawnSettings[i];
+            // Create object pools for object spawning.
             ObjectPool roomContainerPool = new ObjectPool(containerPrefab, roomContainer.transform, 10);
             ObjectPool roomComputerPool = new ObjectPool(computerPrefab, roomContainer.transform, 10);
+            // Create a spawner that uses these settings.
             RoomObjectSpawner spawner = new RoomObjectSpawner(
                 width: (int)room.dimensions.x,
                 height: (int)room.dimensions.y,
+                spawnSettings: spawnSettings,
                 containerPool: roomContainerPool,
                 computerPool: roomComputerPool,
-                wallDisplayPool: roomWallDisplayPool);
+                wallDisplayPool: roomWallDisplayPool,
+                roomParent: roomContainer.transform);
             spawner.SpawnObjects();
         }
 
-        // Connect rooms via corridors (one corridor per connected pair).
+        // Connect rooms via corridors.
         ConnectRooms(roomLookup, corridorContainer.transform);
 
-        // Bake NavMesh.
+        // Bake all NavMesh surfaces.
         BakeNavMeshes();
     }
 
@@ -109,6 +117,7 @@ public class LevelGenerator : MonoBehaviour
         HashSet<Vector2Int> frontier = new HashSet<Vector2Int>();
 
         Vector2Int startPos = Vector2Int.zero;
+        // Use default room dimensions from design settings.
         RoomData startRoom = new RoomData(startPos, GetRandomRoomShape(), new RoomConnections(false, false, false, false), GetRandomRoomDimensions());
         roomList.Add(startRoom);
         grid[startPos] = startRoom;
@@ -118,6 +127,7 @@ public class LevelGenerator : MonoBehaviour
         {
             Vector2Int pos = frontier.ElementAt(Random.Range(0, frontier.Count));
             frontier.Remove(pos);
+
             List<Vector2Int> adjacent = new List<Vector2Int>
             {
                 pos + Vector2Int.up,
@@ -169,8 +179,6 @@ public class LevelGenerator : MonoBehaviour
         }
     }
 
-    // Compute base positions for each room using the room grid.
-    // A gap equal to corridorWidth is added between cells.
     private Dictionary<RoomData, Vector3> ComputeBasePositions(List<RoomData> rooms)
     {
         Dictionary<RoomData, Vector3> basePositions = new Dictionary<RoomData, Vector3>();
@@ -208,7 +216,6 @@ public class LevelGenerator : MonoBehaviour
         return basePositions;
     }
 
-    // Adjust each room’s position so that the room is centered in its grid cell.
     private Dictionary<RoomData, Vector3> ComputeRoomPositions(List<RoomData> rooms, Dictionary<RoomData, Vector3> basePositions)
     {
         Dictionary<RoomData, Vector3> adjustedPositions = new Dictionary<RoomData, Vector3>();
@@ -226,7 +233,6 @@ public class LevelGenerator : MonoBehaviour
         return adjustedPositions;
     }
 
-    // Returns the door position relative to the room's bottom-left.
     private Vector3 GetLocalDoorPosition(RoomData room, DoorDirection dir)
     {
         float w = room.dimensions.x * TileSize;
@@ -246,8 +252,6 @@ public class LevelGenerator : MonoBehaviour
         }
     }
 
-    // Connects rooms via corridor rooms.
-    // Only one corridor is generated per connected pair.
     private void ConnectRooms(Dictionary<RoomData, Transform> roomLookup, Transform corridorParent)
     {
         HashSet<(RoomData, RoomData)> generatedCorridors = new HashSet<(RoomData, RoomData)>();
@@ -291,10 +295,8 @@ public class LevelGenerator : MonoBehaviour
     }
 
     // Generates a corridor room between two door positions.
-    // This version computes the midpoint between door positions, doubles the measured gap,
-    // and centers the corridor room on that midpoint.
-    // For horizontal corridors, we now add +2.5f to the X coordinate.
-    // For vertical corridors, we add +2.5f to the Z coordinate.
+    // This version computes the midpoint between door positions, doubles the gap, and centers the corridor room
+    // without any extra fixed offsets.
     private void GenerateCorridorRoom(Vector3 doorPosA, Vector3 doorPosB, bool vertical, Transform corridorParent)
     {
         Vector3 mid = (doorPosA + doorPosB) / 2f;
@@ -305,16 +307,15 @@ public class LevelGenerator : MonoBehaviour
         int gridHeight = vertical ? corridorTiles : 1;
         float corridorRoomWidth = gridWidth * TileSize;
         float corridorRoomHeight = gridHeight * TileSize;
+        // Center corridor room on the midpoint.
         Vector3 bottomLeft;
         if (vertical)
         {
             bottomLeft = mid - new Vector3(TileSize / 2f, 0, corridorRoomHeight / 2f);
-            bottomLeft.z += 2.5f; // add +2.5f to Z for vertical corridors
         }
         else
         {
             bottomLeft = mid - new Vector3(corridorRoomWidth / 2f, 0, TileSize / 2f);
-            bottomLeft.x += 2.5f; // add +2.5f to X for horizontal corridors
         }
         GameObject corridorRoom = new GameObject("Corridor_" + (vertical ? "Vertical" : "Horizontal"));
         corridorRoom.transform.parent = corridorParent;
@@ -339,14 +340,18 @@ public class LevelGenerator : MonoBehaviour
             wallDisplayPool: corridorWallDisplayPool,
             connections: connections);
         roomGen.GenerateRoom();
+        // Ensure no objects spawn in corridors.
         ObjectPool corridorContainerPool = new ObjectPool(containerPrefab, corridorRoom.transform, 2);
         ObjectPool corridorComputerPool = new ObjectPool(computerPrefab, corridorRoom.transform, 2);
         RoomObjectSpawner spawner = new RoomObjectSpawner(
             width: gridWidth,
             height: gridHeight,
+            spawnSettings: new RoomSpawnSettings(), // empty settings
             containerPool: corridorContainerPool,
             computerPool: corridorComputerPool,
-            wallDisplayPool: corridorWallDisplayPool);
+            wallDisplayPool: corridorWallDisplayPool,
+            roomParent: corridorRoom.transform,
+            isCorridor: true);
         spawner.SpawnObjects();
     }
 
@@ -376,23 +381,15 @@ public class LevelGenerator : MonoBehaviour
 
     private Vector2 GetRandomRoomDimensions()
     {
-        // Generate random dimensions within the design settings' range.
         float w = Random.Range(designSettings.minRoomSize.x, designSettings.maxRoomSize.x);
         float h = Random.Range(designSettings.minRoomSize.y, designSettings.maxRoomSize.y);
-
-        // Round to integer.
+        // Force odd dimensions.
         int width = Mathf.RoundToInt(w);
         int height = Mathf.RoundToInt(h);
-
-        // Force odd dimensions.
-        if (width % 2 == 0)
-            width += 1;
-        if (height % 2 == 0)
-            height += 1;
-
+        if (width % 2 == 0) width += 1;
+        if (height % 2 == 0) height += 1;
         return new Vector2(width, height);
     }
-
 
     #endregion
 }

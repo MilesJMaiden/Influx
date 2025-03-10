@@ -10,9 +10,6 @@ public enum RoomShape
 [CreateAssetMenu(fileName = "LevelDesignSettings", menuName = "Level/Design Settings", order = 1)]
 public class LevelDesignSettings : ScriptableObject
 {
-    [Header("General Settings")]
-    public int roomCount = 10;
-
     [Header("Room Shape Settings")]
     public RoomShape defaultRoomShape = RoomShape.Square;
     public float probabilitySquare = 0.5f;
@@ -27,4 +24,8 @@ public class LevelDesignSettings : ScriptableObject
     [Header("Connection Settings")]
     [Range(0f, 1f)]
     public float connectionProbability = 0.7f;
+
+    [Header("Spawn Settings")]
+    // Each entry in this array defines the spawn configuration for one room.
+    public RoomSpawnSettings[] roomSpawnSettings;
 }

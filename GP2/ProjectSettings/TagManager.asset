@@ -5,6 +5,9 @@ TagManager:
   serializedVersion: 2
   tags:
   - Wall
+  - Container
+  - Computer
+  - WallDisplay
   layers:
   - Default
   - TransparentFX
