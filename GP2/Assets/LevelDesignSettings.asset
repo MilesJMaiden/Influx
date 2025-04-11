@@ -22,7 +22,44 @@ MonoBehaviour:
   connectionProbability: 1
   roomSpawnSettings:
   - roomIdentifier: TEST
-    spawnPrefabs:
-    - {fileID: 6992367028099511134, guid: b6ec086cdc52e6744919fe910cdc79c0, type: 3}
-    - {fileID: 2381596440433889247, guid: 55f3f20f1a98ffc448344b01b1f6255a, type: 3}
-    - {fileID: 3920076611295411707, guid: 9bab78c4b75730f4b9f78fe020f992f0, type: 3}
+    spawnEntries:
+    - prefab: {fileID: 3920076611295411707, guid: 9bab78c4b75730f4b9f78fe020f992f0,
+        type: 3}
+      count: 3
+    - prefab: {fileID: 2381596440433889247, guid: 55f3f20f1a98ffc448344b01b1f6255a,
+        type: 3}
+      count: 3
+    - prefab: {fileID: 6992367028099511134, guid: b6ec086cdc52e6744919fe910cdc79c0,
+        type: 3}
+      count: 3
+    - prefab: {fileID: 1518458682938020491, guid: c21601fc6672e4e42a67ae7ff7173007,
+        type: 3}
+      count: 3
+  - roomIdentifier: TEST
+    spawnEntries:
+    - prefab: {fileID: 3920076611295411707, guid: 9bab78c4b75730f4b9f78fe020f992f0,
+        type: 3}
+      count: 3
+    - prefab: {fileID: 2381596440433889247, guid: 55f3f20f1a98ffc448344b01b1f6255a,
+        type: 3}
+      count: 3
+    - prefab: {fileID: 6992367028099511134, guid: b6ec086cdc52e6744919fe910cdc79c0,
+        type: 3}
+      count: 3
+    - prefab: {fileID: 1518458682938020491, guid: c21601fc6672e4e42a67ae7ff7173007,
+        type: 3}
+      count: 3
+  - roomIdentifier: TEST
+    spawnEntries:
+    - prefab: {fileID: 3920076611295411707, guid: 9bab78c4b75730f4b9f78fe020f992f0,
+        type: 3}
+      count: 3
+    - prefab: {fileID: 2381596440433889247, guid: 55f3f20f1a98ffc448344b01b1f6255a,
+        type: 3}
+      count: 3
+    - prefab: {fileID: 6992367028099511134, guid: b6ec086cdc52e6744919fe910cdc79c0,
+        type: 3}
+      count: 3
+    - prefab: {fileID: 1518458682938020491, guid: c21601fc6672e4e42a67ae7ff7173007,
+        type: 3}
+      count: 3

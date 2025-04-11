@@ -49,6 +49,9 @@ public class LevelGenerator : MonoBehaviour
         GameObject corridorContainer = new GameObject("Corridors");
         corridorContainer.transform.parent = levelContainer.transform;
 
+        // This list will hold data needed for agent spawning after the NavMesh is built.
+        List<(Transform roomContainer, Vector2 dimensions, RoomSpawnSettings spawnSettings)> agentRoomData = new List<(Transform, Vector2, RoomSpawnSettings)>();
+
         Dictionary<RoomData, Transform> roomLookup = new Dictionary<RoomData, Transform>();
         for (int i = 0; i < rooms.Count; i++)
         {
@@ -60,9 +63,9 @@ public class LevelGenerator : MonoBehaviour
             roomLookup[room] = roomContainer.transform;
 
             // Compute room size.
-            float roomWidth = room.dimensions.x * TileSize;
-            float roomHeight = room.dimensions.y * TileSize;
-            RoomFloorGenerator floorGen = new RoomFloorGenerator(floorQuadPrefab, roomContainer.transform, roomWidth, roomHeight);
+            float roomWidthWorld = room.dimensions.x * TileSize;
+            float roomHeightWorld = room.dimensions.y * TileSize;
+            RoomFloorGenerator floorGen = new RoomFloorGenerator(floorQuadPrefab, roomContainer.transform, roomWidthWorld, roomHeightWorld);
             floorGen.GenerateFloor();
 
             // Create room-specific object pools.
@@ -99,6 +102,9 @@ public class LevelGenerator : MonoBehaviour
                 wallDisplayPool: roomWallDisplayPool,
                 roomParent: roomContainer.transform);
             spawner.SpawnObjects();
+
+            // Instead of spawning agents immediately, store room data for later agent spawning.
+            agentRoomData.Add((roomContainer.transform, room.dimensions, spawnSettings));
         }
 
         // Connect rooms via corridors.
@@ -106,6 +112,20 @@ public class LevelGenerator : MonoBehaviour
 
         // Bake all NavMesh surfaces.
         BakeNavMeshes();
+
+        // **** NOW SPAWN AGENTS AFTER THE NAVMESH IS BUILT ****
+        foreach (var data in agentRoomData)
+        {
+            // For each spawn entry in the room settings,
+            // if the entry is for an agent (based on tag "Agent"), then spawn agents.
+            foreach (SpawnEntry entry in data.spawnSettings.spawnEntries)
+            {
+                if (entry.prefab != null && entry.prefab.CompareTag("Agent"))
+                {
+                    AgentManager.Instance.SpawnAgentsForRoom(data.roomContainer, data.dimensions, entry);
+                }
+            }
+        }
     }
 
     #region Connectivity & Positioning
@@ -295,19 +315,16 @@ public class LevelGenerator : MonoBehaviour
     }
 
     // Generates a corridor room between two door positions.
-    // This version computes the midpoint between door positions, doubles the gap, and centers the corridor room
-    // without any extra fixed offsets.
     private void GenerateCorridorRoom(Vector3 doorPosA, Vector3 doorPosB, bool vertical, Transform corridorParent)
     {
         Vector3 mid = (doorPosA + doorPosB) / 2f;
         float distance = vertical ? Mathf.Abs(doorPosB.z - doorPosA.z) : Mathf.Abs(doorPosB.x - doorPosA.x);
-        float corridorLengthWorld = Mathf.Max(TileSize, distance * 2f); // double the gap
+        float corridorLengthWorld = Mathf.Max(TileSize, distance * 2f);
         int corridorTiles = Mathf.CeilToInt(corridorLengthWorld / TileSize);
         int gridWidth = vertical ? 1 : corridorTiles;
         int gridHeight = vertical ? corridorTiles : 1;
         float corridorRoomWidth = gridWidth * TileSize;
         float corridorRoomHeight = gridHeight * TileSize;
-        // Center corridor room on the midpoint.
         Vector3 bottomLeft;
         if (vertical)
         {
@@ -340,7 +357,6 @@ public class LevelGenerator : MonoBehaviour
             wallDisplayPool: corridorWallDisplayPool,
             connections: connections);
         roomGen.GenerateRoom();
-        // Ensure no objects spawn in corridors.
         ObjectPool corridorContainerPool = new ObjectPool(containerPrefab, corridorRoom.transform, 2);
         ObjectPool corridorComputerPool = new ObjectPool(computerPrefab, corridorRoom.transform, 2);
         RoomObjectSpawner spawner = new RoomObjectSpawner(
@@ -383,7 +399,6 @@ public class LevelGenerator : MonoBehaviour
     {
         float w = Random.Range(designSettings.minRoomSize.x, designSettings.maxRoomSize.x);
         float h = Random.Range(designSettings.minRoomSize.y, designSettings.maxRoomSize.y);
-        // Force odd dimensions.
         int width = Mathf.RoundToInt(w);
         int height = Mathf.RoundToInt(h);
         if (width % 2 == 0) width += 1;

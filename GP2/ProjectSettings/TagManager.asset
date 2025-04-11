@@ -4,10 +4,12 @@
 TagManager:
   serializedVersion: 2
   tags:
-  - Wall
+  - WallDisplay
   - Container
   - Computer
-  - WallDisplay
+  - Wall
+  - Agent
+  - Floor
   layers:
   - Default
   - TransparentFX
@@ -19,8 +21,8 @@ TagManager:
   - Wall
   - Door
   - Container
-  - 
-  - 
+  - WallDisplay
+  - Computer
   - 
   - 
   - 

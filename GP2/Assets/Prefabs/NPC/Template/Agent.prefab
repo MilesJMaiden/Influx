@@ -494,9 +494,10 @@ GameObject:
   m_Component:
   - component: {fileID: 5937158295466038853}
   - component: {fileID: 7541241102835609030}
+  - component: {fileID: 8339887841456234123}
   m_Layer: 0
-  m_Name: NPCTemplate
-  m_TagString: Untagged
+  m_Name: Agent
+  m_TagString: Agent
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -541,6 +542,20 @@ NavMeshAgent:
   m_BaseOffset: 0
   m_WalkableMask: 4294967295
   m_ObstacleAvoidanceType: 4
+--- !u!114 &8339887841456234123
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1518458682938020491}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b8e6161222a391147a4753b4c4874ed4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  idleDuration: 2
+  wanderRadius: 10
 --- !u!1 &1601094924663808421
 GameObject:
   m_ObjectHideFlags: 0
