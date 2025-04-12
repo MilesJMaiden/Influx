@@ -12,7 +12,7 @@ GameObject:
   - component: {fileID: 5389105212590542087}
   - component: {fileID: 3510003938176585192}
   m_Layer: 0
-  m_Name: table-display
+  m_Name: Ship Table Display
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

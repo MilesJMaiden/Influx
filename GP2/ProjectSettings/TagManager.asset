@@ -10,6 +10,12 @@ TagManager:
   - Wall
   - Agent
   - Floor
+  - Table
+  - RockBin
+  - Rock
+  - ShipTable
+  - Bin
+  - PlanetTable
   layers:
   - Default
   - TransparentFX

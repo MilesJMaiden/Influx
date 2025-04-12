@@ -1,10 +1,10 @@
 ﻿using UnityEngine;
 using System.Collections.Generic;
+using System.Linq;
 
 #region SafeArea Helper
 /// <summary>
-/// A simple structure representing a 2D safe area (in local room space)
-/// defined by a minimum and maximum point.
+/// Represents a 2D safe area (in room-local space) defined by a minimum and maximum point.
 /// </summary>
 public struct SafeArea
 {
@@ -34,9 +34,10 @@ public class RoomObjectSpawner : IRoomObjectSpawner
 
     // Constant for interior margin (for generic objects spawning inside the room area)
     private const float spawnMargin = 1f;
-
-    // ***** NEW: Default safe offset to keep spawns away from walls *****
+    // Default safe offset to keep spawns away from walls.
     private const float defaultSafeOffset = 2.5f;
+    // ***** NEW: Wall margin - objects (except WallDisplay) must be at least this far from any wall.
+    private const float wallMargin = 4f;
 
     private readonly ObjectPool containerPool;
     private readonly ObjectPool computerPool;
@@ -91,13 +92,14 @@ public class RoomObjectSpawner : IRoomObjectSpawner
 
     /// <summary>
     /// Computes the safe area rectangle for a given margin.
-    /// The safe area is the room’s bounds inset by (margin + defaultSafeOffset) on every side.
+    /// The safe area is the room's bounds inset by (margin + defaultSafeOffset + wallMargin) on every side.
+    /// This ensures that spawned objects are generated with an additional clearance from the walls.
     /// </summary>
     private SafeArea ComputeSafeArea(float margin)
     {
         float roomWidthWorld = width * TileSize;
         float roomHeightWorld = height * TileSize;
-        float totalOffset = margin + defaultSafeOffset;
+        float totalOffset = margin + defaultSafeOffset + wallMargin;  // Added wallMargin here
         Vector2 min = new Vector2(totalOffset, totalOffset);
         Vector2 max = new Vector2(roomWidthWorld - totalOffset, roomHeightWorld - totalOffset);
         return new SafeArea(min, max);
@@ -132,14 +134,14 @@ public class RoomObjectSpawner : IRoomObjectSpawner
             wallPositions.Add((rightWallPos, Quaternion.Euler(0, -90, 0), false));
         }
 
-        // For container candidates, use the safe area computed from containerMargin.
+        // For Container spawns, use the safe area computed from containerMargin.
         SafeArea containerSafeArea = ComputeSafeArea(containerMargin);
         cornerPositions.Add(new Vector3(containerSafeArea.min.x, 0, containerSafeArea.min.y));   // bottom-left
         cornerPositions.Add(new Vector3(containerSafeArea.min.x, 0, containerSafeArea.max.y));   // top-left
         cornerPositions.Add(new Vector3(containerSafeArea.max.x, 0, containerSafeArea.min.y));   // bottom-right
         cornerPositions.Add(new Vector3(containerSafeArea.max.x, 0, containerSafeArea.max.y));   // top-right
 
-        // For computer candidates, use the safe area computed from computerMargin.
+        // For Computer spawns, use the safe area computed from computerMargin.
         SafeArea computerSafeArea = ComputeSafeArea(computerMargin);
         float midX = (computerSafeArea.min.x + computerSafeArea.max.x) / 2f;
         float midZ = (computerSafeArea.min.y + computerSafeArea.max.y) / 2f;
@@ -149,9 +151,11 @@ public class RoomObjectSpawner : IRoomObjectSpawner
         computerPositions.Add(new Vector3(computerSafeArea.max.x, 0, midZ));     // right safe edge
     }
 
+    /// <summary>
     /// Spawns objects based on the spawn settings.
     /// For Container and Computer prefabs, candidate positions are sampled from the safe area and explicitly validated.
-    /// (Agent spawn entries are skipped here.)
+    /// Generic props (PlanetTable, Bin, ShipTable, Rock, RockBin, Table) use a generic safe area.
+    /// Agent prefabs and Wall prefabs are skipped (they are handled separately).
     /// </summary>
     public void SpawnObjects()
     {
@@ -164,8 +168,9 @@ public class RoomObjectSpawner : IRoomObjectSpawner
 
         foreach (SpawnEntry entry in spawnSettings.spawnEntries)
         {
-            // ***** SKIP AGENT ENTRIES HERE *****
-            if (entry.prefab != null && entry.prefab.CompareTag("Agent"))
+            // Skip Agent and Wall spawn entries.
+            if (entry.prefab != null &&
+                (entry.prefab.CompareTag("Agent") || entry.prefab.CompareTag("Wall")))
             {
                 continue;
             }
@@ -179,7 +184,6 @@ public class RoomObjectSpawner : IRoomObjectSpawner
 
                 if (entry.prefab.CompareTag("WallDisplay") && wallPositions.Count > 0)
                 {
-                    // For wall displays, use precomputed wall candidates.
                     var candidate = wallPositions[Random.Range(0, wallPositions.Count)];
                     spawnPos = candidate.position + new Vector3(0, WallDisplayHeight, 0);
                     float yRot = candidate.rotation.eulerAngles.y;
@@ -196,10 +200,8 @@ public class RoomObjectSpawner : IRoomObjectSpawner
                 }
                 else if (entry.prefab.CompareTag("Container"))
                 {
-                    // Try candidates from precomputed corner positions.
                     if (!TryGetValidPosition(cornerPositions, entry.prefab, out spawnPos))
                     {
-                        // Fallback: sample from the safe area until valid.
                         while (attempts < maxAttempts)
                         {
                             spawnPos = GetRandomPositionWithinSafeArea(containerMargin);
@@ -213,16 +215,13 @@ public class RoomObjectSpawner : IRoomObjectSpawner
                     }
                     else
                     {
-                        // We found a candidate from the cornerPositions list.
                         spawnSuccess = ValidateSpawnCandidate(spawnPos, Quaternion.identity, entry.prefab);
                     }
                 }
                 else if (entry.prefab.CompareTag("Computer"))
                 {
-                    // Try candidates from precomputed computer positions.
                     if (!TryGetValidPosition(computerPositions, entry.prefab, out spawnPos))
                     {
-                        // Fallback: sample from the safe area until valid.
                         while (attempts < maxAttempts)
                         {
                             spawnPos = GetRandomPositionWithinSafeArea(computerMargin);
@@ -239,15 +238,33 @@ public class RoomObjectSpawner : IRoomObjectSpawner
                         spawnSuccess = ValidateSpawnCandidate(spawnPos, Quaternion.identity, entry.prefab);
                     }
                 }
+                else if (entry.prefab.CompareTag("PlanetTable") ||
+                         entry.prefab.CompareTag("Bin") ||
+                         entry.prefab.CompareTag("ShipTable") ||
+                         entry.prefab.CompareTag("Rock") ||
+                         entry.prefab.CompareTag("RockBin") ||
+                         entry.prefab.CompareTag("Table"))
+                {
+                    while (!spawnSuccess && attempts < maxAttempts)
+                    {
+                        spawnPos = GetRandomPositionWithinSafeArea(spawnMargin);
+                        if (ValidateSpawnCandidate(spawnPos, Quaternion.identity, entry.prefab))
+                        {
+                            spawnSuccess = true;
+                            break;
+                        }
+                        attempts++;
+                    }
+                }
                 else
                 {
-                    // For unknown tags, pick a random interior position (fallback) and validate it.
                     while (!spawnSuccess && attempts < maxAttempts)
                     {
                         spawnPos = GetRandomInteriorPosition();
                         if (ValidateSpawnCandidate(spawnPos, Quaternion.identity, entry.prefab))
                         {
                             spawnSuccess = true;
+                            break;
                         }
                         attempts++;
                     }
@@ -260,7 +277,6 @@ public class RoomObjectSpawner : IRoomObjectSpawner
                 else
                 {
                     Debug.LogWarning($"Failed to spawn {entry.prefab.name} in a non-overlapping position after {maxAttempts} attempts.");
-                    // Optionally re-add to pool or schedule retry.
                 }
             }
         }
@@ -281,7 +297,6 @@ public class RoomObjectSpawner : IRoomObjectSpawner
 
     /// <summary>
     /// Attempts to pick a candidate position from a list that passes validation.
-    /// Uses ValidateSpawnCandidate to check each candidate.
     /// </summary>
     private bool TryGetValidPosition(List<Vector3> candidates, GameObject prefab, out Vector3 validPos)
     {
@@ -319,31 +334,47 @@ public class RoomObjectSpawner : IRoomObjectSpawner
     }
 
     /// <summary>
-    /// Validates a candidate spawn position using the prefab's BoxCollider.
+    /// Validates a candidate spawn position using the prefab's Collider.
     /// Converts the candidate (in local space) to world space,
-    /// then uses Physics.OverlapBox with a layer mask to detect any overlapping colliders.
-    /// Only colliders on objects tagged "Wall" or "WallDisplay" will cause a failure.
+    /// then uses Physics.OverlapBox to detect any overlapping colliders.
+    /// Additionally, if the prefab is not a WallDisplay, it uses an OverlapSphere
+    /// to ensure the candidate is at least 'wallMargin' units away from any collider tagged "Wall".
     /// </summary>
     private bool ValidateSpawnCandidate(Vector3 candidate, Quaternion rotation, GameObject prefab)
     {
         Vector3 worldPos = roomParent.TransformPoint(candidate);
-        BoxCollider prefabCollider = prefab.GetComponent<BoxCollider>();
+        Collider prefabCollider = prefab.GetComponent<Collider>();
         if (prefabCollider == null)
         {
-            // If the prefab doesn't have a BoxCollider, assume it's valid.
             return true;
         }
-        Vector3 halfExtents = prefabCollider.size * 0.5f;
-        // Optionally, you could use layers here instead of tags.
-        Collider[] overlaps = Physics.OverlapBox(worldPos, halfExtents, rotation);
-        foreach (var col in overlaps)
+
+        Vector3 halfExtents;
+        if (prefabCollider is BoxCollider box)
         {
-            Debug.Log("Overlap with object: " + col.gameObject.name + " tag: " + col.gameObject.tag);
-            if (col.gameObject.CompareTag("Wall") || col.gameObject.CompareTag("WallDisplay"))
+            halfExtents = box.size * 0.5f;
+        }
+        else
+        {
+            halfExtents = prefabCollider.bounds.extents;
+        }
+
+        Collider[] overlaps = Physics.OverlapBox(worldPos, halfExtents, rotation);
+        if (overlaps.Length > 0)
+            return false;
+
+        // For non-WallDisplay objects, enforce an additional wall margin.
+        if (!prefab.CompareTag("WallDisplay"))
+        {
+            // Use OverlapSphere with wallMargin radius.
+            Collider[] wallCheck = Physics.OverlapSphere(worldPos, wallMargin);
+            foreach (Collider col in wallCheck)
             {
-                return false;
+                if (col.gameObject.CompareTag("Wall"))
+                    return false;
             }
         }
+
         return true;
     }
 }

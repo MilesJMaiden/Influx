@@ -12,6 +12,7 @@ GameObject:
   - component: {fileID: 7566454272176267628}
   - component: {fileID: 5987504216923647022}
   - component: {fileID: -3034969464317738879}
+  - component: {fileID: 5878289569238023801}
   m_Layer: 11
   m_Name: Computer
   m_TagString: Computer
@@ -105,3 +106,19 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 0.39999998, y: 0.66087294, z: 0.4381411}
   m_Center: {x: 0, y: 0.33043647, z: 0.044070564}
+--- !u!208 &5878289569238023801
+NavMeshObstacle:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3920076611295411707}
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Shape: 1
+  m_Extents: {x: 0.2, y: 0.33, z: 0.21900001}
+  m_MoveThreshold: 0.1
+  m_Carve: 1
+  m_CarveOnlyStationary: 1
+  m_Center: {x: 0, y: 0.33, z: 0.044000003}
+  m_TimeToStationary: 0.5

@@ -12,6 +12,7 @@ GameObject:
   - component: {fileID: 2083120631730583405}
   - component: {fileID: 1957827327769977628}
   - component: {fileID: 3092483674275864559}
+  - component: {fileID: -6470922478853800131}
   m_Layer: 10
   m_Name: Wall Display
   m_TagString: WallDisplay
@@ -105,3 +106,19 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 0.6, y: 0.46087292, z: 0.38436836}
   m_Center: {x: 0, y: 0.23043646, z: 0.04902903}
+--- !u!208 &-6470922478853800131
+NavMeshObstacle:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6992367028099511134}
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Shape: 1
+  m_Extents: {x: 0.3, y: 0.23, z: 0.192}
+  m_MoveThreshold: 0.1
+  m_Carve: 1
+  m_CarveOnlyStationary: 1
+  m_Center: {x: 0, y: 0.23, z: 0.049000002}
+  m_TimeToStationary: 0.5
