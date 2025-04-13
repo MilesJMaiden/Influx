@@ -32,17 +32,23 @@ public class RoomObjectSpawner : IRoomObjectSpawner
     // Vertical offset to raise displays off the floor.
     private const float WallDisplayHeight = 2.5f;
 
-    // Constant for interior margin (for generic objects spawning inside the room area)
+    // Constant for interior margin (used for Container and Computer spawns)
     private const float spawnMargin = 1f;
+    // Margin for bigger objects (applied to all other objects)
+    private const float bigObjectMargin = 3f;
+    // New: Extra spacing between big objects
+    private const float bigObjectSpacing = 5f;
+    // New: Extra spacing for Computer objects so they do not overlap with any other objects.
+    private const float computerSpacing = 3f;
     // Default safe offset to keep spawns away from walls.
     private const float defaultSafeOffset = 2.5f;
-    // ***** NEW: Wall margin - objects (except WallDisplay) must be at least this far from any wall.
+    // Wall margin: objects (except WallDisplay) must be at least this far from any wall.
     private const float wallMargin = 4f;
 
     private readonly ObjectPool containerPool;
     private readonly ObjectPool computerPool;
     private readonly ObjectPool wallDisplayPool;
-    private readonly HashSet<Vector3> windowWallPositions = new HashSet<Vector3>();
+    private readonly HashSet<Vector3> windowWallPositions = new();
 
     private readonly int width;  // room width in tiles
     private readonly int height; // room height in tiles
@@ -55,6 +61,11 @@ public class RoomObjectSpawner : IRoomObjectSpawner
     private readonly List<(Vector3 position, Quaternion rotation, bool isHorizontal)> wallPositions = new();
     private readonly List<Vector3> cornerPositions = new();
     private readonly List<Vector3> computerPositions = new();
+
+    // List to track positions of spawned big objects (generic objects)
+    private readonly List<Vector3> placedBigObjectPositions = new();
+    // New: List to track positions of spawned Computer objects.
+    private readonly List<Vector3> placedComputerPositions = new();
 
     // Flag indicating if this spawner is for a corridor.
     private readonly bool isCorridor;
@@ -93,13 +104,12 @@ public class RoomObjectSpawner : IRoomObjectSpawner
     /// <summary>
     /// Computes the safe area rectangle for a given margin.
     /// The safe area is the room's bounds inset by (margin + defaultSafeOffset + wallMargin) on every side.
-    /// This ensures that spawned objects are generated with an additional clearance from the walls.
     /// </summary>
     private SafeArea ComputeSafeArea(float margin)
     {
         float roomWidthWorld = width * TileSize;
         float roomHeightWorld = height * TileSize;
-        float totalOffset = margin + defaultSafeOffset + wallMargin;  // Added wallMargin here
+        float totalOffset = margin + defaultSafeOffset + wallMargin;
         Vector2 min = new Vector2(totalOffset, totalOffset);
         Vector2 max = new Vector2(roomWidthWorld - totalOffset, roomHeightWorld - totalOffset);
         return new SafeArea(min, max);
@@ -136,26 +146,38 @@ public class RoomObjectSpawner : IRoomObjectSpawner
 
         // For Container spawns, use the safe area computed from containerMargin.
         SafeArea containerSafeArea = ComputeSafeArea(containerMargin);
-        cornerPositions.Add(new Vector3(containerSafeArea.min.x, 0, containerSafeArea.min.y));   // bottom-left
-        cornerPositions.Add(new Vector3(containerSafeArea.min.x, 0, containerSafeArea.max.y));   // top-left
-        cornerPositions.Add(new Vector3(containerSafeArea.max.x, 0, containerSafeArea.min.y));   // bottom-right
-        cornerPositions.Add(new Vector3(containerSafeArea.max.x, 0, containerSafeArea.max.y));   // top-right
+        cornerPositions.Add(new Vector3(containerSafeArea.min.x, 0, containerSafeArea.min.y));
+        cornerPositions.Add(new Vector3(containerSafeArea.min.x, 0, containerSafeArea.max.y));
+        cornerPositions.Add(new Vector3(containerSafeArea.max.x, 0, containerSafeArea.min.y));
+        cornerPositions.Add(new Vector3(containerSafeArea.max.x, 0, containerSafeArea.max.y));
 
         // For Computer spawns, use the safe area computed from computerMargin.
         SafeArea computerSafeArea = ComputeSafeArea(computerMargin);
         float midX = (computerSafeArea.min.x + computerSafeArea.max.x) / 2f;
         float midZ = (computerSafeArea.min.y + computerSafeArea.max.y) / 2f;
-        computerPositions.Add(new Vector3(midX, 0, computerSafeArea.min.y));   // bottom safe edge
-        computerPositions.Add(new Vector3(midX, 0, computerSafeArea.max.y));   // top safe edge
-        computerPositions.Add(new Vector3(computerSafeArea.min.x, 0, midZ));     // left safe edge
-        computerPositions.Add(new Vector3(computerSafeArea.max.x, 0, midZ));     // right safe edge
+        computerPositions.Add(new Vector3(midX, 0, computerSafeArea.min.y));
+        computerPositions.Add(new Vector3(midX, 0, computerSafeArea.max.y));
+        computerPositions.Add(new Vector3(computerSafeArea.min.x, 0, midZ));
+        computerPositions.Add(new Vector3(computerSafeArea.max.x, 0, midZ));
+    }
+
+    /// <summary>
+    /// Determines if a prefab should be considered a big object (that needs extra spacing).
+    /// Here, we treat any prefab that is not a Container, Computer, WallDisplay, or WindowWall as a big object.
+    /// </summary>
+    private bool IsBigObject(GameObject prefab)
+    {
+        return !prefab.CompareTag("Container") &&
+               !prefab.CompareTag("Computer") &&
+               !prefab.CompareTag("WallDisplay") &&
+               !prefab.CompareTag("WindowWall");
     }
 
     /// <summary>
     /// Spawns objects based on the spawn settings.
-    /// For Container and Computer prefabs, candidate positions are sampled from the safe area and explicitly validated.
-    /// Generic props (PlanetTable, Bin, ShipTable, Rock, RockBin, Table) use a generic safe area.
-    /// Agent prefabs and Wall prefabs are skipped (they are handled separately).
+    /// Container, Computer, WallDisplay, and WindowWall spawns are handled with their specialized safe areas.
+    /// All other objects are spawned using the larger safe area defined by bigObjectMargin.
+    /// Additionally, extra spacing checks are applied for big objects and for Computer objects.
     /// </summary>
     public void SpawnObjects()
     {
@@ -164,7 +186,7 @@ public class RoomObjectSpawner : IRoomObjectSpawner
         if (spawnSettings == null || spawnSettings.spawnEntries == null || spawnSettings.spawnEntries.Length == 0)
             return;
 
-        int maxAttempts = 5; // Maximum attempts to find a valid spawn position.
+        int maxAttempts = 5;
 
         foreach (SpawnEntry entry in spawnSettings.spawnEntries)
         {
@@ -238,29 +260,27 @@ public class RoomObjectSpawner : IRoomObjectSpawner
                         spawnSuccess = ValidateSpawnCandidate(spawnPos, Quaternion.identity, entry.prefab);
                     }
                 }
-                else if (entry.prefab.CompareTag("PlanetTable") ||
-                         entry.prefab.CompareTag("Bin") ||
-                         entry.prefab.CompareTag("ShipTable") ||
-                         entry.prefab.CompareTag("Rock") ||
-                         entry.prefab.CompareTag("RockBin") ||
-                         entry.prefab.CompareTag("Table"))
+                else if (entry.prefab.CompareTag("WindowWall"))
                 {
-                    while (!spawnSuccess && attempts < maxAttempts)
+                    // For WindowWall spawns, restrict candidate positions to the center of each wall.
+                    float roomWidthWorld = width * TileSize;
+                    float roomHeightWorld = height * TileSize;
+                    List<Vector3> windowWallCandidates = new List<Vector3>()
                     {
-                        spawnPos = GetRandomPositionWithinSafeArea(spawnMargin);
-                        if (ValidateSpawnCandidate(spawnPos, Quaternion.identity, entry.prefab))
-                        {
-                            spawnSuccess = true;
-                            break;
-                        }
-                        attempts++;
-                    }
+                        new Vector3(roomWidthWorld / 2f, 0, 0),                     // Bottom wall center
+                        new Vector3(roomWidthWorld / 2f, 0, roomHeightWorld),         // Top wall center
+                        new Vector3(0, 0, roomHeightWorld / 2f),                      // Left wall center
+                        new Vector3(roomWidthWorld, 0, roomHeightWorld / 2f)          // Right wall center
+                    };
+                    spawnPos = windowWallCandidates[Random.Range(0, windowWallCandidates.Count)];
+                    spawnSuccess = ValidateSpawnCandidate(spawnPos, Quaternion.identity, entry.prefab);
                 }
+                // All other objects use the larger safe area (bigObjectMargin)
                 else
                 {
                     while (!spawnSuccess && attempts < maxAttempts)
                     {
-                        spawnPos = GetRandomInteriorPosition();
+                        spawnPos = GetRandomPositionWithinSafeArea(bigObjectMargin);
                         if (ValidateSpawnCandidate(spawnPos, Quaternion.identity, entry.prefab))
                         {
                             spawnSuccess = true;
@@ -273,6 +293,16 @@ public class RoomObjectSpawner : IRoomObjectSpawner
                 if (spawnSuccess)
                 {
                     Object.Instantiate(entry.prefab, roomParent.TransformPoint(spawnPos), spawnRot, roomParent);
+
+                    // Record positions for extra spacing checks.
+                    if (IsBigObject(entry.prefab))
+                    {
+                        placedBigObjectPositions.Add(spawnPos);
+                    }
+                    else if (entry.prefab.CompareTag("Computer"))
+                    {
+                        placedComputerPositions.Add(spawnPos);
+                    }
                 }
                 else
                 {
@@ -283,15 +313,13 @@ public class RoomObjectSpawner : IRoomObjectSpawner
     }
 
     /// <summary>
-    /// Returns a random interior position within the room (fallback).
-    /// Assumes the room's bottom-left is (0,0) in local space.
+    /// Returns a random position within the safe area computed from the given margin.
     /// </summary>
-    private Vector3 GetRandomInteriorPosition()
+    private Vector3 GetRandomPositionWithinSafeArea(float margin)
     {
-        float roomWidthWorld = width * TileSize;
-        float roomHeightWorld = height * TileSize;
-        float x = Random.Range(spawnMargin, roomWidthWorld - spawnMargin);
-        float z = Random.Range(spawnMargin, roomHeightWorld - spawnMargin);
+        SafeArea safeArea = ComputeSafeArea(margin);
+        float x = Random.Range(safeArea.min.x, safeArea.max.x);
+        float z = Random.Range(safeArea.min.y, safeArea.max.y);
         return new Vector3(x, 0, z);
     }
 
@@ -323,22 +351,14 @@ public class RoomObjectSpawner : IRoomObjectSpawner
     }
 
     /// <summary>
-    /// Returns a random position within the safe area computed from the given margin.
-    /// </summary>
-    private Vector3 GetRandomPositionWithinSafeArea(float margin)
-    {
-        SafeArea safeArea = ComputeSafeArea(margin);
-        float x = Random.Range(safeArea.min.x, safeArea.max.x);
-        float z = Random.Range(safeArea.min.y, safeArea.max.y);
-        return new Vector3(x, 0, z);
-    }
-
-    /// <summary>
     /// Validates a candidate spawn position using the prefab's Collider.
-    /// Converts the candidate (in local space) to world space,
-    /// then uses Physics.OverlapBox to detect any overlapping colliders.
-    /// Additionally, if the prefab is not a WallDisplay, it uses an OverlapSphere
-    /// to ensure the candidate is at least 'wallMargin' units away from any collider tagged "Wall".
+    /// Converts the candidate (in local space) to world space, then uses Physics.OverlapBox to detect overlapping colliders.
+    /// Also:
+    /// - For non-WallDisplay objects, an OverlapSphere ensures the candidate is at least 'wallMargin' units from any collider tagged "Wall".
+    /// - For WallDisplay objects, an OverlapSphere ensures no collider tagged "WindowWall" overlaps.
+    /// - For WindowWall objects, the candidate must be at the center of a wall.
+    /// - For big objects, extra spacing from already spawned big objects is enforced.
+    /// - For Computer objects, extra spacing is enforced from both previously spawned Computers and big objects.
     /// </summary>
     private bool ValidateSpawnCandidate(Vector3 candidate, Quaternion rotation, GameObject prefab)
     {
@@ -363,15 +383,78 @@ public class RoomObjectSpawner : IRoomObjectSpawner
         if (overlaps.Length > 0)
             return false;
 
-        // For non-WallDisplay objects, enforce an additional wall margin.
+        // For non-WallDisplay objects, enforce a wall margin.
         if (!prefab.CompareTag("WallDisplay"))
         {
-            // Use OverlapSphere with wallMargin radius.
             Collider[] wallCheck = Physics.OverlapSphere(worldPos, wallMargin);
             foreach (Collider col in wallCheck)
             {
                 if (col.gameObject.CompareTag("Wall"))
                     return false;
+            }
+        }
+
+        // For WallDisplay objects, ensure no WindowWall overlaps.
+        if (prefab.CompareTag("WallDisplay"))
+        {
+            Collider[] windowCheck = Physics.OverlapSphere(worldPos, wallMargin);
+            foreach (Collider col in windowCheck)
+            {
+                if (col.gameObject.CompareTag("WindowWall"))
+                    return false;
+            }
+        }
+
+        // For WindowWall objects, check that the candidate is at the center of a wall.
+        if (prefab.CompareTag("WindowWall"))
+        {
+            float roomWidthWorld = width * TileSize;
+            float roomHeightWorld = height * TileSize;
+            float tolerance = 0.5f; // adjust as needed
+
+            bool isBottomCenter = Mathf.Abs(candidate.x - roomWidthWorld / 2f) <= tolerance &&
+                                  Mathf.Abs(candidate.z - 0f) <= tolerance;
+            bool isTopCenter = Mathf.Abs(candidate.x - roomWidthWorld / 2f) <= tolerance &&
+                               Mathf.Abs(candidate.z - roomHeightWorld) <= tolerance;
+            bool isLeftCenter = Mathf.Abs(candidate.x - 0f) <= tolerance &&
+                                Mathf.Abs(candidate.z - roomHeightWorld / 2f) <= tolerance;
+            bool isRightCenter = Mathf.Abs(candidate.x - roomWidthWorld) <= tolerance &&
+                                 Mathf.Abs(candidate.z - roomHeightWorld / 2f) <= tolerance;
+            if (!(isBottomCenter || isTopCenter || isLeftCenter || isRightCenter))
+            {
+                return false;
+            }
+        }
+
+        // For big objects, enforce extra spacing from already spawned big objects.
+        if (IsBigObject(prefab))
+        {
+            foreach (Vector3 placedPos in placedBigObjectPositions)
+            {
+                if (Vector3.Distance(candidate, placedPos) < bigObjectSpacing)
+                {
+                    return false;
+                }
+            }
+        }
+
+        // Extra spacing check for Computer objects.
+        if (prefab.CompareTag("Computer"))
+        {
+            foreach (Vector3 placedPos in placedComputerPositions)
+            {
+                if (Vector3.Distance(candidate, placedPos) < computerSpacing)
+                {
+                    return false;
+                }
+            }
+            // Optionally, also check spacing against big objects.
+            foreach (Vector3 placedPos in placedBigObjectPositions)
+            {
+                if (Vector3.Distance(candidate, placedPos) < computerSpacing)
+                {
+                    return false;
+                }
             }
         }
 

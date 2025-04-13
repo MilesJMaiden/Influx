@@ -9,6 +9,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 5871187748509167497}
+  - component: {fileID: 7899578097290650451}
   m_Layer: 0
   m_Name: Rock Bin
   m_TagString: RockBin
@@ -32,6 +33,27 @@ Transform:
   - {fileID: 1055390012527900197}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!65 &7899578097290650451
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3165785929787020192}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 3.5953705, y: 3.6572018, z: 6.055295}
+  m_Center: {x: 0.0045109987, y: 1.8286009, z: -0.032043457}
 --- !u!1 &3292794225919959906
 GameObject:
   m_ObjectHideFlags: 0

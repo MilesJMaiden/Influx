@@ -16,6 +16,8 @@ TagManager:
   - ShipTable
   - Bin
   - PlanetTable
+  - WindowWall
+  - CornerWall
   layers:
   - Default
   - TransparentFX

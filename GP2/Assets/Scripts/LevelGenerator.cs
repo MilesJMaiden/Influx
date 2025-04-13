@@ -19,6 +19,8 @@ public class LevelGenerator : MonoBehaviour
     public GameObject containerPrefab;
     public GameObject computerPrefab;
     public GameObject floorQuadPrefab;
+    // NEW: Corner Wall prefab
+    public GameObject cornerWallPrefab;
 
     [Header("Layout Settings")]
     // The gap (in world units) between rooms – filled by corridor rooms.
@@ -50,7 +52,8 @@ public class LevelGenerator : MonoBehaviour
         corridorContainer.transform.parent = levelContainer.transform;
 
         // This list will hold data needed for agent spawning after the NavMesh is built.
-        List<(Transform roomContainer, Vector2 dimensions, RoomSpawnSettings spawnSettings)> agentRoomData = new List<(Transform, Vector2, RoomSpawnSettings)>();
+        List<(Transform roomContainer, Vector2 dimensions, RoomSpawnSettings spawnSettings)> agentRoomData =
+            new List<(Transform, Vector2, RoomSpawnSettings)>();
 
         Dictionary<RoomData, Transform> roomLookup = new Dictionary<RoomData, Transform>();
         for (int i = 0; i < rooms.Count; i++)
@@ -62,7 +65,7 @@ public class LevelGenerator : MonoBehaviour
             roomContainer.transform.position = roomPositions.ContainsKey(room) ? roomPositions[room] : Vector3.zero;
             roomLookup[room] = roomContainer.transform;
 
-            // Compute room size.
+            // Compute room size in world units.
             float roomWidthWorld = room.dimensions.x * TileSize;
             float roomHeightWorld = room.dimensions.y * TileSize;
             RoomFloorGenerator floorGen = new RoomFloorGenerator(floorQuadPrefab, roomContainer.transform, roomWidthWorld, roomHeightWorld);
@@ -103,7 +106,40 @@ public class LevelGenerator : MonoBehaviour
                 roomParent: roomContainer.transform);
             spawner.SpawnObjects();
 
-            // Instead of spawning agents immediately, store room data for later agent spawning.
+            Vector3 bottomLeftLocal = new Vector3(0 - 1.25f, 0, 0 - 1.25f);
+            Vector3 bottomRightLocal = new Vector3(roomWidthWorld - 3.75f, 0, 0 - 1.25f);
+            Vector3 topLeftLocal = new Vector3(0 - 1.25f, 0, roomHeightWorld - 3.75f);
+            Vector3 topRightLocal = new Vector3(roomWidthWorld - 3.75f, 0, roomHeightWorld - 3.75f);
+
+            // Define rotations for each corner.
+            // (Assume that with zero rotation the prefab fits the bottom-left corner.)
+            Quaternion rotBottomLeft = Quaternion.Euler(0, 180, 0);
+            Quaternion rotBottomRight = Quaternion.Euler(0, 90, 0);
+            Quaternion rotTopLeft = Quaternion.Euler(0, 270, 0);
+            Quaternion rotTopRight = Quaternion.Euler(0, 0, 0);
+
+            Vector3[] cornerLocalPositions = new Vector3[]
+            {
+            bottomLeftLocal,
+            bottomRightLocal,
+            topLeftLocal,
+            topRightLocal
+            };
+            Quaternion[] cornerRotations = new Quaternion[]
+            {
+            rotBottomLeft,
+            rotBottomRight,
+            rotTopLeft,
+            rotTopRight
+            };
+
+            for (int j = 0; j < cornerLocalPositions.Length; j++)
+            {
+                Vector3 worldCorner = roomContainer.transform.TransformPoint(cornerLocalPositions[j]);
+                Object.Instantiate(cornerWallPrefab, worldCorner, cornerRotations[j], roomContainer.transform);
+            }
+
+            // Store room data for later agent spawning.
             agentRoomData.Add((roomContainer.transform, room.dimensions, spawnSettings));
         }
 
@@ -116,8 +152,6 @@ public class LevelGenerator : MonoBehaviour
         // **** NOW SPAWN AGENTS AFTER THE NAVMESH IS BUILT ****
         foreach (var data in agentRoomData)
         {
-            // For each spawn entry in the room settings,
-            // if the entry is for an agent (based on tag "Agent"), then spawn agents.
             foreach (SpawnEntry entry in data.spawnSettings.spawnEntries)
             {
                 if (entry.prefab != null && entry.prefab.CompareTag("Agent"))
@@ -127,6 +161,7 @@ public class LevelGenerator : MonoBehaviour
             }
         }
     }
+
 
     #region Connectivity & Positioning
 
