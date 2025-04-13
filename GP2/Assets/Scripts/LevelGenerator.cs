@@ -106,13 +106,13 @@ public class LevelGenerator : MonoBehaviour
                 roomParent: roomContainer.transform);
             spawner.SpawnObjects();
 
+            // Instantiate corner walls.
             Vector3 bottomLeftLocal = new Vector3(0 - 1.25f, 0, 0 - 1.25f);
             Vector3 bottomRightLocal = new Vector3(roomWidthWorld - 3.75f, 0, 0 - 1.25f);
             Vector3 topLeftLocal = new Vector3(0 - 1.25f, 0, roomHeightWorld - 3.75f);
             Vector3 topRightLocal = new Vector3(roomWidthWorld - 3.75f, 0, roomHeightWorld - 3.75f);
 
             // Define rotations for each corner.
-            // (Assume that with zero rotation the prefab fits the bottom-left corner.)
             Quaternion rotBottomLeft = Quaternion.Euler(0, 180, 0);
             Quaternion rotBottomRight = Quaternion.Euler(0, 90, 0);
             Quaternion rotTopLeft = Quaternion.Euler(0, 270, 0);
@@ -149,7 +149,7 @@ public class LevelGenerator : MonoBehaviour
         // Bake all NavMesh surfaces.
         BakeNavMeshes();
 
-        // **** NOW SPAWN AGENTS AFTER THE NAVMESH IS BUILT ****
+        // Now spawn agents after the NavMesh has been built.
         foreach (var data in agentRoomData)
         {
             foreach (SpawnEntry entry in data.spawnSettings.spawnEntries)
@@ -160,6 +160,28 @@ public class LevelGenerator : MonoBehaviour
                 }
             }
         }
+
+        // --- NEW: After everything is generated, compute the bounds of the levelContainer and set them for the CameraManager.
+        Bounds envBounds = ComputeBoundsFromChildren(levelContainer);
+        CameraManager.Instance.SetLevelBounds(envBounds);
+    }
+
+    /// <summary>
+    /// Computes a bounding box that encapsulates all Renderers in the children of the given root.
+    /// </summary>
+    private Bounds ComputeBoundsFromChildren(GameObject root)
+    {
+        Renderer[] renderers = root.GetComponentsInChildren<Renderer>();
+        if (renderers.Length == 0)
+        {
+            return new Bounds(root.transform.position, Vector3.zero);
+        }
+        Bounds bounds = renderers[0].bounds;
+        foreach (Renderer rend in renderers)
+        {
+            bounds.Encapsulate(rend.bounds);
+        }
+        return bounds;
     }
 
 

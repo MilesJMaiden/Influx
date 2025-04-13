@@ -3488,7 +3488,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   assignedCamera: {fileID: 1983216284}
+  levelRoot: {fileID: 1211058838}
   moveSpeed: 20
+  deadZone: 0.2
   zoomSpeed: 10
   minOrthographicSize: 5
   maxOrthographicSize: 50
@@ -3496,6 +3498,8 @@ MonoBehaviour:
     m_Center: {x: 0, y: 0, z: 0}
     m_Extent: {x: 0, y: 0, z: 0}
   useLevelBounds: 0
+  fixedYPosition: 25
+  focusPadding: 2
 --- !u!4 &1983216283
 Transform:
   m_ObjectHideFlags: 0

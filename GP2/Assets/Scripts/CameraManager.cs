@@ -11,7 +11,7 @@ public class CameraManager : MonoBehaviour
     [Header("Movement Settings")]
     [Tooltip("Movement speed in world units per second.")]
     public float moveSpeed = 20f;
-    [Tooltip("Input dead zone threshold; values below this are ignored.")]
+    [Tooltip("Dead zone for input; values below this are ignored.")]
     public float deadZone = 0.1f;
 
     [Header("Zoom Settings")]
@@ -23,22 +23,24 @@ public class CameraManager : MonoBehaviour
     public float maxOrthographicSize = 100f;
 
     [Header("Level Boundaries")]
-    [Tooltip("These boundaries should exactly enclose your generated environment.")]
+    [Tooltip("These boundaries should enclose the entire generated level. Set this by calling SetLevelBounds(generatedBounds) from your generation code.")]
     public Bounds levelBounds;
-    [Tooltip("If true, camera movement is clamped to levelBounds.")]
+    [Tooltip("If true, camera movement is clamped to the level boundaries.")]
     public bool useLevelBounds = false;
 
     [Header("Initial Settings")]
-    [Tooltip("Fixed Y position for the camera (set above the level).")]
+    [Tooltip("The fixed Y position of the camera (must be above the environment).")]
     public float fixedYPosition = 25f;
-    [Tooltip("Padding added when focusing the camera on the entire level.")]
+    [Tooltip("Padding added when focusing on the level.")]
     public float focusPadding = 2f;
 
     private Camera cam;
+    // controllerTransform is used for movement. Attach this script to a Camera Rig if desired.
     private Transform controllerTransform;
 
     private void Awake()
     {
+        // Singleton pattern.
         if (Instance != null && Instance != this)
         {
             Destroy(gameObject);
@@ -50,39 +52,31 @@ public class CameraManager : MonoBehaviour
 
     private void Start()
     {
-        // Use the assigned camera or fallback to Camera.main.
+        // Use the assigned camera if provided; otherwise fallback to Camera.main.
         if (assignedCamera != null)
-        {
             cam = assignedCamera;
-        }
         else
-        {
             cam = Camera.main;
-            if (cam == null)
-            {
-                Debug.LogError("CameraManager: No camera assigned and no Main Camera found!");
-                enabled = false;
-                return;
-            }
+
+        if (cam == null)
+        {
+            Debug.LogError("CameraManager: No camera assigned and no Main Camera found!");
+            enabled = false;
+            return;
         }
 
-        // Force orthographic mode.
+        // Force orthographic mode and a top-down view.
         cam.orthographic = true;
-        // Force a top-down view.
         cam.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
 
         // Fix the camera's Y position.
         Vector3 currentPos = cam.transform.position;
         cam.transform.position = new Vector3(currentPos.x, fixedYPosition, currentPos.z);
 
-        // Set the default orthographic size.
+        // Set default orthographic size.
         cam.orthographicSize = minOrthographicSize;
 
-        // If level bounds were set already, focus on the level.
-        if (useLevelBounds)
-        {
-            FocusOnLevel();
-        }
+        // Note: We now rely on an external call to SetLevelBounds(...) to center and size the camera.
     }
 
     private void Update()
@@ -92,24 +86,27 @@ public class CameraManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Handles camera movement using WASD/Arrow keys.
-    /// A/D move the camera left/right (affecting the X position),
-    /// W moves the camera upward (increasing the Z position), and
-    /// S moves the camera downward (decreasing the Z position).
-    /// Movement is applied only if input exceeds the dead zone.
+    /// Handles camera movement:
+    /// - Horizontal movement (X axis) is controlled via the Horizontal axis (A/D keys).
+    /// - Vertical movement (Z axis) is controlled explicitly:
+    ///     • W key increases Z.
+    ///     • S key decreases Z.
+    /// No unwanted Z drift will occur when neither key is pressed.
     /// </summary>
     private void HandleMovement()
     {
-        // Get raw input.
+        // Horizontal input from the Horizontal axis.
         float inputX = Input.GetAxisRaw("Horizontal");
-        float inputZ = Input.GetAxisRaw("Vertical");
+        if (Mathf.Abs(inputX) < deadZone)
+            inputX = 0f;
 
-        // Apply dead zone.
-        if (Mathf.Abs(inputX) < deadZone) { inputX = 0f; }
-        if (Mathf.Abs(inputZ) < deadZone) { inputZ = 0f; }
-        // For a standard top-down mapping:
-        // W should increase Z (inputZ > 0), S decrease Z (inputZ < 0).
-        // A/D modify X.
+        // Vertical input: explicitly check for keys.
+        float inputZ = 0f;
+        if (Input.GetKey(KeyCode.W))
+            inputZ += 1f;  // W increases Z.
+        if (Input.GetKey(KeyCode.S))
+            inputZ -= 1f;  // S decreases Z.
+
         Vector3 delta = new Vector3(inputX, 0, inputZ) * moveSpeed * Time.deltaTime;
         Vector3 newPos = controllerTransform.position + delta;
 
@@ -123,7 +120,7 @@ public class CameraManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Adjusts the orthographic size (zoom) using the mouse scroll wheel.
+    /// Handles zooming with the mouse scroll wheel by adjusting the orthographic size.
     /// </summary>
     private void HandleZoom()
     {
@@ -136,10 +133,10 @@ public class CameraManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Sets the level boundaries (which must enclose the entire generated environment)
-    /// and immediately focuses the camera so that the full level is in frame.
+    /// Sets the level boundaries (in world space) and centers/zooms the camera on the full level.
+    /// Call this from your LevelGenerator after the environment is fully generated.
     /// </summary>
-    /// <param name="generatedBounds">The Bounds that enclose the environment (in world space).</param>
+    /// <param name="generatedBounds">The Bounds that enclose the generated level.</param>
     public void SetLevelBounds(Bounds generatedBounds)
     {
         levelBounds = generatedBounds;
@@ -148,16 +145,14 @@ public class CameraManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Centers the camera on the level boundaries and adjusts the orthographic size
-    /// so that the entire level is visible. The camera's Y position remains fixed.
+    /// Centers the camera on the level boundaries and adjusts the orthographic size so that the entire level is in frame.
+    /// The camera's Y position remains fixed.
     /// </summary>
     private void FocusOnLevel()
     {
         Vector3 center = levelBounds.center;
-        // Set camera position (maintaining fixedYPosition).
         controllerTransform.position = new Vector3(center.x, fixedYPosition, center.z);
 
-        // Determine the required orthographic size.
         float verticalExtent = levelBounds.extents.z;
         float horizontalExtent = levelBounds.extents.x;
         float aspect = cam.aspect;
