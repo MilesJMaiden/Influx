@@ -107,9 +107,9 @@ public class LevelGenerator : MonoBehaviour
             spawner.SpawnObjects();
 
             // Instantiate corner walls.
-            Vector3 bottomLeftLocal = new Vector3(0 - 1.25f, 0, 0 - 1.25f);
-            Vector3 bottomRightLocal = new Vector3(roomWidthWorld - 3.75f, 0, 0 - 1.25f);
-            Vector3 topLeftLocal = new Vector3(0 - 1.25f, 0, roomHeightWorld - 3.75f);
+            Vector3 bottomLeftLocal = new Vector3(-1.25f, 0, -1.25f);
+            Vector3 bottomRightLocal = new Vector3(roomWidthWorld - 3.75f, 0, -1.25f);
+            Vector3 topLeftLocal = new Vector3(-1.25f, 0, roomHeightWorld - 3.75f);
             Vector3 topRightLocal = new Vector3(roomWidthWorld - 3.75f, 0, roomHeightWorld - 3.75f);
 
             // Define rotations for each corner.
@@ -120,17 +120,17 @@ public class LevelGenerator : MonoBehaviour
 
             Vector3[] cornerLocalPositions = new Vector3[]
             {
-            bottomLeftLocal,
-            bottomRightLocal,
-            topLeftLocal,
-            topRightLocal
+                bottomLeftLocal,
+                bottomRightLocal,
+                topLeftLocal,
+                topRightLocal
             };
             Quaternion[] cornerRotations = new Quaternion[]
             {
-            rotBottomLeft,
-            rotBottomRight,
-            rotTopLeft,
-            rotTopRight
+                rotBottomLeft,
+                rotBottomRight,
+                rotTopLeft,
+                rotTopRight
             };
 
             for (int j = 0; j < cornerLocalPositions.Length; j++)
@@ -161,7 +161,7 @@ public class LevelGenerator : MonoBehaviour
             }
         }
 
-        // --- NEW: After everything is generated, compute the bounds of the levelContainer and set them for the CameraManager.
+        // Compute the bounds of the levelContainer and set them for the CameraManager.
         Bounds envBounds = ComputeBoundsFromChildren(levelContainer);
         CameraManager.Instance.SetLevelBounds(envBounds);
     }
@@ -184,7 +184,6 @@ public class LevelGenerator : MonoBehaviour
         return bounds;
     }
 
-
     #region Connectivity & Positioning
 
     private List<RoomData> GenerateRooms(int count)
@@ -194,7 +193,6 @@ public class LevelGenerator : MonoBehaviour
         HashSet<Vector2Int> frontier = new HashSet<Vector2Int>();
 
         Vector2Int startPos = Vector2Int.zero;
-        // Use default room dimensions from design settings.
         RoomData startRoom = new RoomData(startPos, GetRandomRoomShape(), new RoomConnections(false, false, false, false), GetRandomRoomDimensions());
         roomList.Add(startRoom);
         grid[startPos] = startRoom;
@@ -371,13 +369,10 @@ public class LevelGenerator : MonoBehaviour
         }
     }
 
-    // Generates a corridor room between two door positions, adds a NavMeshLink with endpoints scaled by corridor size (using conditional values for horizontal corridors),
-    // and then spawns corridor objects.
+    // Generates a corridor room between two door positions.
     private void GenerateCorridorRoom(Vector3 doorPosA, Vector3 doorPosB, bool vertical, Transform corridorParent)
     {
-        // Compute the midpoint between door positions.
         Vector3 mid = (doorPosA + doorPosB) / 2f;
-        // Compute corridor length (at least one tile; double the gap).
         float distance = vertical ? Mathf.Abs(doorPosB.z - doorPosA.z) : Mathf.Abs(doorPosB.x - doorPosA.x);
         float corridorLengthWorld = Mathf.Max(TileSize, distance * 2f);
         int corridorTiles = Mathf.CeilToInt(corridorLengthWorld / TileSize);
@@ -385,8 +380,6 @@ public class LevelGenerator : MonoBehaviour
         int gridHeight = vertical ? corridorTiles : 1;
         float corridorRoomWidth = gridWidth * TileSize;
         float corridorRoomHeight = gridHeight * TileSize;
-
-        // Determine the bottom-left position for the corridor.
         Vector3 bottomLeft;
         if (vertical)
         {
@@ -396,64 +389,22 @@ public class LevelGenerator : MonoBehaviour
         {
             bottomLeft = mid - new Vector3(corridorRoomWidth / 2f, 0, TileSize / 2f);
         }
-
-        // Create the corridor GameObject.
         GameObject corridorRoom = new GameObject("Corridor_" + (vertical ? "Vertical" : "Horizontal"));
         corridorRoom.transform.parent = corridorParent;
         corridorRoom.transform.position = bottomLeft;
 
-        // Generate the corridor floor.
         RoomFloorGenerator floorGen = new RoomFloorGenerator(floorQuadPrefab, corridorRoom.transform, corridorRoomWidth, corridorRoomHeight);
         floorGen.GenerateFloor();
 
-        // --- ADD NAVMESH LINK COMPONENT ---
-        NavMeshLink link = corridorRoom.AddComponent<NavMeshLink>();
-        float localMargin = 0.5f; // A small inset margin.
-
-        if (vertical)
-        {
-            // For vertical corridors, endpoints are based on half the corridor's height.
-            float halfHeight = corridorRoomHeight / 2f;
-            link.startPoint = new Vector3(0f, 0f, -halfHeight + localMargin);
-            link.endPoint = new Vector3(0f, 0f, halfHeight - localMargin);
-        }
-        else
-        {
-            // For horizontal corridors, choose endpoints based on corridorRoomWidth.
-            // Define a threshold to decide between "short" and "long" corridors.
-            float horizontalThreshold = 15f;
-            if (corridorRoomWidth >= horizontalThreshold)
-            {
-                // For longer corridors:
-                link.startPoint = new Vector3(-4f, 0f, 0f);
-                link.endPoint = new Vector3(9f, 0f, 0f);
-            }
-            else
-            {
-                // For shorter corridors:
-                link.startPoint = new Vector3(-4f, 0f, 0f);
-                link.endPoint = new Vector3(4f, 0f, 0f);
-            }
-        }
-        // Set additional link parameters.
-        link.width = vertical ? corridorRoomWidth : corridorRoomHeight; // Adjust this as desired.
-        link.costModifier = 1;
-        link.bidirectional = true;
-        link.UpdateLink();
-
-        // Create object pools for corridor geometry.
         ObjectPool corridorFloorPool = new ObjectPool(floorPrefab, corridorRoom.transform, corridorTiles * corridorTiles);
         ObjectPool corridorWallPool = new ObjectPool(wallPrefab, corridorRoom.transform, corridorTiles * 2);
         ObjectPool corridorWindowWallPool = new ObjectPool(windowWallPrefab, corridorRoom.transform, corridorTiles);
         ObjectPool corridorDoorPool = new ObjectPool(doorPrefab, corridorRoom.transform, 2);
         ObjectPool corridorWallDisplayPool = new ObjectPool(wallDisplayPrefab, corridorRoom.transform, corridorTiles);
 
-        // Set up corridor room connections.
         RoomConnections connections = vertical
             ? new RoomConnections(true, true, false, false)
             : new RoomConnections(false, false, true, true);
-
-        // Generate corridor geometry.
         RoomGenerator roomGen = new RoomGenerator(
             width: gridWidth,
             height: gridHeight,
@@ -465,19 +416,70 @@ public class LevelGenerator : MonoBehaviour
             connections: connections);
         roomGen.GenerateRoom();
 
-        // Create object pools for corridor object spawning.
         ObjectPool corridorContainerPool = new ObjectPool(containerPrefab, corridorRoom.transform, 2);
         ObjectPool corridorComputerPool = new ObjectPool(computerPrefab, corridorRoom.transform, 2);
         RoomObjectSpawner spawner = new RoomObjectSpawner(
             width: gridWidth,
             height: gridHeight,
-            spawnSettings: new RoomSpawnSettings(), // empty settings for corridors.
+            spawnSettings: new RoomSpawnSettings(), // empty settings
             containerPool: corridorContainerPool,
             computerPool: corridorComputerPool,
             wallDisplayPool: corridorWallDisplayPool,
             roomParent: corridorRoom.transform,
             isCorridor: true);
         spawner.SpawnObjects();
+
+        // --- NEW: Add a NavMeshLink that covers the entire corridor.
+        AddNavMeshLinkToCorridor(corridorRoom, gridWidth, gridHeight, corridorRoomWidth, corridorRoomHeight, corridorWidth);
+    }
+
+    /// <summary>
+    /// Adds a NavMeshLink to the given corridor room so that it exactly spans the corridor floor,
+    /// with a 2.5f deduction from the x and z positions of the computed center,
+    /// and with -1 added to the X start point and +1 to the X end point.
+    /// For horizontal corridors (gridWidth > 1) the link's rotation is set to 0 (Euler(0,0,0)).
+    /// </summary>
+    /// <param name="corridorRoom">The corridor GameObject generated by GenerateCorridorRoom.</param>
+    /// <param name="gridWidth">The number of tiles in the corridor’s horizontal dimension (1 for vertical corridors).</param>
+    /// <param name="gridHeight">The number of tiles in the corridor’s vertical dimension.</param>
+    /// <param name="corridorRoomWidth">The corridor room’s width in world units (gridWidth * TileSize).</param>
+    /// <param name="corridorRoomHeight">The corridor room’s height in world units (gridHeight * TileSize).</param>
+    /// <param name="corridorWidth">The desired width for the NavMeshLink.</param>
+    private void AddNavMeshLinkToCorridor(GameObject corridorRoom, int gridWidth, int gridHeight,
+        float corridorRoomWidth, float corridorRoomHeight, float corridorWidth)
+    {
+        // Create a new GameObject for the NavMeshLink as a child of the corridorRoom.
+        GameObject linkObject = new GameObject("CorridorNavMeshLink");
+        linkObject.transform.SetParent(corridorRoom.transform, false);
+
+        // Compute the corridor's local center (assuming corridorRoom pivot is at bottom-left),
+        // then deduct 2.5f from the X and Z coordinates.
+        Vector3 localCenter = new Vector3((corridorRoomWidth / 2f) - 2.5f, 0f, (corridorRoomHeight / 2f) - 2.5f);
+        linkObject.transform.localPosition = localCenter;
+
+        // Add the NavMeshLink component.
+        NavMeshLink link = linkObject.AddComponent<NavMeshLink>();
+        link.width = corridorWidth;
+        link.bidirectional = true;
+
+        // Determine if the corridor is vertical or horizontal.
+        // Vertical corridors have gridWidth == 1. Horizontal corridors have gridWidth > 1.
+        if (gridWidth == 1)
+        {
+            // Vertical corridor: rotate 90° so the link's local X axis aligns with the corridor's long direction.
+            linkObject.transform.localRotation = Quaternion.Euler(0, 90, 0);
+            float halfLength = corridorRoomHeight / 2f;
+            link.startPoint = new Vector3(-halfLength - 1f, 0, 0);
+            link.endPoint = new Vector3(halfLength + 1f, 0, 0);
+        }
+        else
+        {
+            // Horizontal corridor: rotation must be 0.
+            linkObject.transform.localRotation = Quaternion.Euler(0, 0, 0);
+            float halfLength = corridorRoomWidth / 2f;
+            link.startPoint = new Vector3(-halfLength - 1f, 0, 0);
+            link.endPoint = new Vector3(halfLength + 1f, 0, 0);
+        }
     }
 
 
