@@ -371,10 +371,13 @@ public class LevelGenerator : MonoBehaviour
         }
     }
 
-    // Generates a corridor room between two door positions.
+    // Generates a corridor room between two door positions, adds a NavMeshLink with endpoints scaled by corridor size (using conditional values for horizontal corridors),
+    // and then spawns corridor objects.
     private void GenerateCorridorRoom(Vector3 doorPosA, Vector3 doorPosB, bool vertical, Transform corridorParent)
     {
+        // Compute the midpoint between door positions.
         Vector3 mid = (doorPosA + doorPosB) / 2f;
+        // Compute corridor length (at least one tile; double the gap).
         float distance = vertical ? Mathf.Abs(doorPosB.z - doorPosA.z) : Mathf.Abs(doorPosB.x - doorPosA.x);
         float corridorLengthWorld = Mathf.Max(TileSize, distance * 2f);
         int corridorTiles = Mathf.CeilToInt(corridorLengthWorld / TileSize);
@@ -382,6 +385,8 @@ public class LevelGenerator : MonoBehaviour
         int gridHeight = vertical ? corridorTiles : 1;
         float corridorRoomWidth = gridWidth * TileSize;
         float corridorRoomHeight = gridHeight * TileSize;
+
+        // Determine the bottom-left position for the corridor.
         Vector3 bottomLeft;
         if (vertical)
         {
@@ -391,19 +396,64 @@ public class LevelGenerator : MonoBehaviour
         {
             bottomLeft = mid - new Vector3(corridorRoomWidth / 2f, 0, TileSize / 2f);
         }
+
+        // Create the corridor GameObject.
         GameObject corridorRoom = new GameObject("Corridor_" + (vertical ? "Vertical" : "Horizontal"));
         corridorRoom.transform.parent = corridorParent;
         corridorRoom.transform.position = bottomLeft;
+
+        // Generate the corridor floor.
         RoomFloorGenerator floorGen = new RoomFloorGenerator(floorQuadPrefab, corridorRoom.transform, corridorRoomWidth, corridorRoomHeight);
         floorGen.GenerateFloor();
+
+        // --- ADD NAVMESH LINK COMPONENT ---
+        NavMeshLink link = corridorRoom.AddComponent<NavMeshLink>();
+        float localMargin = 0.5f; // A small inset margin.
+
+        if (vertical)
+        {
+            // For vertical corridors, endpoints are based on half the corridor's height.
+            float halfHeight = corridorRoomHeight / 2f;
+            link.startPoint = new Vector3(0f, 0f, -halfHeight + localMargin);
+            link.endPoint = new Vector3(0f, 0f, halfHeight - localMargin);
+        }
+        else
+        {
+            // For horizontal corridors, choose endpoints based on corridorRoomWidth.
+            // Define a threshold to decide between "short" and "long" corridors.
+            float horizontalThreshold = 15f;
+            if (corridorRoomWidth >= horizontalThreshold)
+            {
+                // For longer corridors:
+                link.startPoint = new Vector3(-4f, 0f, 0f);
+                link.endPoint = new Vector3(9f, 0f, 0f);
+            }
+            else
+            {
+                // For shorter corridors:
+                link.startPoint = new Vector3(-4f, 0f, 0f);
+                link.endPoint = new Vector3(4f, 0f, 0f);
+            }
+        }
+        // Set additional link parameters.
+        link.width = vertical ? corridorRoomWidth : corridorRoomHeight; // Adjust this as desired.
+        link.costModifier = 1;
+        link.bidirectional = true;
+        link.UpdateLink();
+
+        // Create object pools for corridor geometry.
         ObjectPool corridorFloorPool = new ObjectPool(floorPrefab, corridorRoom.transform, corridorTiles * corridorTiles);
         ObjectPool corridorWallPool = new ObjectPool(wallPrefab, corridorRoom.transform, corridorTiles * 2);
         ObjectPool corridorWindowWallPool = new ObjectPool(windowWallPrefab, corridorRoom.transform, corridorTiles);
         ObjectPool corridorDoorPool = new ObjectPool(doorPrefab, corridorRoom.transform, 2);
         ObjectPool corridorWallDisplayPool = new ObjectPool(wallDisplayPrefab, corridorRoom.transform, corridorTiles);
+
+        // Set up corridor room connections.
         RoomConnections connections = vertical
             ? new RoomConnections(true, true, false, false)
             : new RoomConnections(false, false, true, true);
+
+        // Generate corridor geometry.
         RoomGenerator roomGen = new RoomGenerator(
             width: gridWidth,
             height: gridHeight,
@@ -414,12 +464,14 @@ public class LevelGenerator : MonoBehaviour
             wallDisplayPool: corridorWallDisplayPool,
             connections: connections);
         roomGen.GenerateRoom();
+
+        // Create object pools for corridor object spawning.
         ObjectPool corridorContainerPool = new ObjectPool(containerPrefab, corridorRoom.transform, 2);
         ObjectPool corridorComputerPool = new ObjectPool(computerPrefab, corridorRoom.transform, 2);
         RoomObjectSpawner spawner = new RoomObjectSpawner(
             width: gridWidth,
             height: gridHeight,
-            spawnSettings: new RoomSpawnSettings(), // empty settings
+            spawnSettings: new RoomSpawnSettings(), // empty settings for corridors.
             containerPool: corridorContainerPool,
             computerPool: corridorComputerPool,
             wallDisplayPool: corridorWallDisplayPool,
@@ -427,6 +479,7 @@ public class LevelGenerator : MonoBehaviour
             isCorridor: true);
         spawner.SpawnObjects();
     }
+
 
     private void BakeNavMeshes()
     {
