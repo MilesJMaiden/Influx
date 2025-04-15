@@ -128,38 +128,71 @@ public class RoomObjectSpawner : IRoomObjectSpawner
         float roomWidthWorld = width * TileSize;
         float roomHeightWorld = height * TileSize;
 
-        // Wall displays remain along the perimeter.
-        for (int i = 0; i < width; i++)
+        // For wall displays along the top and bottom walls, skip the first and last tile to avoid corners.
+        if (width > 2)
         {
-            Vector3 topWallPos = new Vector3((i + 0.5f) * TileSize, 0, roomHeightWorld - displayInset);
-            Vector3 bottomWallPos = new Vector3((i + 0.5f) * TileSize, 0, displayInset);
-            wallPositions.Add((topWallPos, Quaternion.Euler(0, 0, 0), true));
-            wallPositions.Add((bottomWallPos, Quaternion.Euler(0, 180, 0), true));
+            for (int i = 1; i < width - 1; i++)
+            {
+                Vector3 topWallPos = new Vector3((i + 0.5f) * TileSize, 0, roomHeightWorld - displayInset);
+                Vector3 bottomWallPos = new Vector3((i + 0.5f) * TileSize, 0, displayInset);
+                // Top wall display: rotate 180 (facing inward).
+                wallPositions.Add((topWallPos, Quaternion.Euler(0, 180, 0), true));
+                // Bottom wall display: no rotation (facing inward).
+                wallPositions.Add((bottomWallPos, Quaternion.Euler(0, 0, 0), true));
+            }
         }
-        for (int j = 0; j < height; j++)
+        // For rooms too narrow, add whatever is available.
+        else
         {
-            Vector3 leftWallPos = new Vector3(displayInset, 0, (j + 0.5f) * TileSize);
-            Vector3 rightWallPos = new Vector3(roomWidthWorld - displayInset, 0, (j + 0.5f) * TileSize);
-            wallPositions.Add((leftWallPos, Quaternion.Euler(0, 90, 0), false));
-            wallPositions.Add((rightWallPos, Quaternion.Euler(0, -90, 0), false));
+            for (int i = 0; i < width; i++)
+            {
+                Vector3 topWallPos = new Vector3((i + 0.5f) * TileSize, 0, roomHeightWorld - displayInset);
+                Vector3 bottomWallPos = new Vector3((i + 0.5f) * TileSize, 0, displayInset);
+                wallPositions.Add((topWallPos, Quaternion.Euler(0, 180, 0), true));
+                wallPositions.Add((bottomWallPos, Quaternion.Euler(0, 0, 0), true));
+            }
         }
 
-        // For Container spawns, use the safe area computed from containerMargin.
+        // For side walls (left and right), skip the first and last tile to avoid corners.
+        if (height > 2)
+        {
+            for (int j = 1; j < height - 1; j++)
+            {
+                Vector3 leftWallPos = new Vector3(displayInset, 0, (j + 0.5f) * TileSize);
+                Vector3 rightWallPos = new Vector3(roomWidthWorld - displayInset, 0, (j + 0.5f) * TileSize);
+                wallPositions.Add((leftWallPos, Quaternion.Euler(0, 90, 0), false));
+                wallPositions.Add((rightWallPos, Quaternion.Euler(0, -90, 0), false));
+            }
+        }
+        else
+        {
+            for (int j = 0; j < height; j++)
+            {
+                Vector3 leftWallPos = new Vector3(displayInset, 0, (j + 0.5f) * TileSize);
+                Vector3 rightWallPos = new Vector3(roomWidthWorld - displayInset, 0, (j + 0.5f) * TileSize);
+                wallPositions.Add((leftWallPos, Quaternion.Euler(0, 90, 0), false));
+                wallPositions.Add((rightWallPos, Quaternion.Euler(0, -90, 0), false));
+            }
+        }
+
+        // For Container spawns, compute candidates from the safe area.
         SafeArea containerSafeArea = ComputeSafeArea(containerMargin);
-        cornerPositions.Add(new Vector3(containerSafeArea.min.x, 0, containerSafeArea.min.y));
-        cornerPositions.Add(new Vector3(containerSafeArea.min.x, 0, containerSafeArea.max.y));
-        cornerPositions.Add(new Vector3(containerSafeArea.max.x, 0, containerSafeArea.min.y));
-        cornerPositions.Add(new Vector3(containerSafeArea.max.x, 0, containerSafeArea.max.y));
+        cornerPositions.Add(new Vector3(containerSafeArea.min.x, 0, containerSafeArea.min.y));   // bottom-left
+        cornerPositions.Add(new Vector3(containerSafeArea.min.x, 0, containerSafeArea.max.y));   // top-left
+        cornerPositions.Add(new Vector3(containerSafeArea.max.x, 0, containerSafeArea.min.y));   // bottom-right
+        cornerPositions.Add(new Vector3(containerSafeArea.max.x, 0, containerSafeArea.max.y));   // top-right
 
-        // For Computer spawns, use the safe area computed from computerMargin.
+        // For Computer spawns, compute candidates from their safe area.
         SafeArea computerSafeArea = ComputeSafeArea(computerMargin);
         float midX = (computerSafeArea.min.x + computerSafeArea.max.x) / 2f;
         float midZ = (computerSafeArea.min.y + computerSafeArea.max.y) / 2f;
-        computerPositions.Add(new Vector3(midX, 0, computerSafeArea.min.y));
-        computerPositions.Add(new Vector3(midX, 0, computerSafeArea.max.y));
-        computerPositions.Add(new Vector3(computerSafeArea.min.x, 0, midZ));
-        computerPositions.Add(new Vector3(computerSafeArea.max.x, 0, midZ));
+        computerPositions.Add(new Vector3(midX, 0, computerSafeArea.min.y));   // bottom safe edge
+        computerPositions.Add(new Vector3(midX, 0, computerSafeArea.max.y));   // top safe edge
+        computerPositions.Add(new Vector3(computerSafeArea.min.x, 0, midZ));     // left safe edge
+        computerPositions.Add(new Vector3(computerSafeArea.max.x, 0, midZ));     // right safe edge
     }
+
+
 
     /// <summary>
     /// Determines if a prefab should be considered a big object (that needs extra spacing).

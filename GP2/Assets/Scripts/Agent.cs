@@ -29,23 +29,33 @@ public class Agent : MonoBehaviour
 
     // Cached reference to the selection indicator child (named "SelectedCylinder").
     private GameObject selectedIndicator;
+    // Cached reference to the highlight indicator child (named "HighlightCylinder").
+    private GameObject highlightIndicator;
 
     private void Awake()
     {
         navAgent = GetComponent<NavMeshAgent>();
 
-        // Attempt to find the child named "SelectedCylinder"
-        Transform indicator = transform.Find("SelectedCylinder");
-        if (indicator != null)
+        // Find the child "SelectedCylinder" and disable it.
+        Transform sel = transform.Find("SelectedCylinder");
+        if (sel != null)
         {
-            selectedIndicator = indicator.gameObject;
+            selectedIndicator = sel.gameObject;
             selectedIndicator.SetActive(false);
+        }
+
+        // Find the child "HighlightCylinder" and disable it.
+        Transform high = transform.Find("HighlightCylinder");
+        if (high != null)
+        {
+            highlightIndicator = high.gameObject;
+            highlightIndicator.SetActive(false);
         }
     }
 
     private void Start()
     {
-        // Delay starting the FSM until the agent is on a valid NavMesh.
+        // Delay starting the agent's behavior until it's on a valid NavMesh.
         StartCoroutine(EnableAgentWhenReady());
     }
 
@@ -55,7 +65,7 @@ public class Agent : MonoBehaviour
         {
             yield return null;
         }
-        // If no agent is currently selected, start the FSM.
+        // Begin FSM if no agent is currently selected.
         if (SelectedAgent == null)
         {
             TransitionToState(AgentState.Idle);
@@ -64,76 +74,65 @@ public class Agent : MonoBehaviour
 
     private void Update()
     {
-        // If this agent is the selected agent, override FSM behavior.
+        // If this agent is selected, override normal FSM with user input.
         if (SelectedAgent == this)
         {
             HandleUserInput();
-            // Do not process FSM state transitions.
             return;
         }
 
-        // Normal FSM behavior.
         stateTimer -= Time.deltaTime;
         switch (currentState)
         {
             case AgentState.Idle:
                 if (stateTimer <= 0f)
-                {
                     TransitionToState(AgentState.Wander);
-                }
                 break;
             case AgentState.Wander:
-                // Once the agent has reached its destination (or close enough) transition to Idle.
+                // Transition to Idle when the destination is reached.
                 if (!navAgent.pathPending && navAgent.remainingDistance <= navAgent.stoppingDistance)
-                {
                     TransitionToState(AgentState.Idle);
-                }
                 break;
+        }
+    }
+
+    // ---------------- Mouse Over Highlighting ----------------
+
+    /// <summary>
+    /// Called when the mouse cursor enters this agent's collider.
+    /// If this agent is not selected, the "HighlightCylinder" child is enabled.
+    /// </summary>
+    private void OnMouseEnter()
+    {
+        if (SelectedAgent != this && highlightIndicator != null)
+        {
+            highlightIndicator.SetActive(true);
         }
     }
 
     /// <summary>
-    /// Handles user input when this agent is selected.
-    /// Q key: Deselect the agent.
-    /// Left mouse click on the floor: Set the agent's destination to that point.
+    /// Called when the mouse cursor exits this agent's collider.
+    /// Disables the "HighlightCylinder" child.
     /// </summary>
-    private void HandleUserInput()
+    private void OnMouseExit()
     {
-        // Deselect when the user presses Q.
-        if (Input.GetKeyDown(KeyCode.Q))
+        if (highlightIndicator != null)
         {
-            Deselect();
-            return;
-        }
-
-        // If left mouse button is pressed, perform a raycast to the floor.
-        if (Input.GetMouseButtonDown(0))
-        {
-            Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-            RaycastHit hit;
-            // You may adjust the maxDistance and layer mask as necessary.
-            if (Physics.Raycast(ray, out hit, 100f))
-            {
-                // Check if the hit object is tagged as "Floor".
-                if (hit.collider.CompareTag("Floor"))
-                {
-                    navAgent.SetDestination(hit.point);
-                }
-            }
+            highlightIndicator.SetActive(false);
         }
     }
+
+    // ---------------- Selection and User Input ----------------
 
     /// <summary>
     /// Called when this agent is clicked.
-    /// Sets this agent as the selected agent.
+    /// If it is not already selected, it becomes the selected agent.
     /// </summary>
     private void OnMouseDown()
     {
-        // If this agent is already selected, do nothing.
         if (SelectedAgent == this)
             return;
 
-        // If another agent is selected, deselect it.
         if (SelectedAgent != null)
             SelectedAgent.Deselect();
 
@@ -141,7 +140,7 @@ public class Agent : MonoBehaviour
     }
 
     /// <summary>
-    /// Selects this agent and enables its selection indicator.
+    /// Selects this agent. Enables its selection indicator and stops its current navigation.
     /// </summary>
     private void Select()
     {
@@ -150,12 +149,16 @@ public class Agent : MonoBehaviour
         {
             selectedIndicator.SetActive(true);
         }
-        // Stop any current navigation.
+        // Disable the highlight when selected.
+        if (highlightIndicator != null)
+        {
+            highlightIndicator.SetActive(false);
+        }
         navAgent.ResetPath();
     }
 
     /// <summary>
-    /// Deselects this agent and disables its selection indicator.
+    /// Deselects this agent. Disables its selection indicator and restarts the FSM.
     /// </summary>
     public void Deselect()
     {
@@ -166,15 +169,42 @@ public class Agent : MonoBehaviour
         if (SelectedAgent == this)
         {
             SelectedAgent = null;
-            // Restart the FSM.
             TransitionToState(AgentState.Idle);
         }
     }
 
     /// <summary>
-    /// Transitions the agent to the specified FSM state.
+    /// Handles user input when this agent is selected.
+    /// Q key deselects the agent, and a left mouse click on a floor (tagged "Floor") causes the agent to move there.
     /// </summary>
-    /// <param name="newState">The new state to enter.</param>
+    private void HandleUserInput()
+    {
+        if (Input.GetKeyDown(KeyCode.Q))
+        {
+            Deselect();
+            return;
+        }
+
+        if (Input.GetMouseButtonDown(0))
+        {
+            Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+            RaycastHit hit;
+            if (Physics.Raycast(ray, out hit, 100f))
+            {
+                if (hit.collider.CompareTag("Floor"))
+                {
+                    navAgent.SetDestination(hit.point);
+                }
+            }
+        }
+    }
+
+    // ---------------- FSM Methods ----------------
+
+    /// <summary>
+    /// Transitions the agent to the specified state.
+    /// </summary>
+    /// <param name="newState">The new state to transition to.</param>
     private void TransitionToState(AgentState newState)
     {
         currentState = newState;
@@ -190,7 +220,7 @@ public class Agent : MonoBehaviour
     }
 
     /// <summary>
-    /// Sets a random destination within wanderRadius and assigns it to the NavMeshAgent.
+    /// Sets a random destination for the agent within wanderRadius.
     /// </summary>
     private void SetRandomDestination()
     {

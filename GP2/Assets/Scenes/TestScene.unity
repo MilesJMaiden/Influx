@@ -3609,7 +3609,7 @@ MonoBehaviour:
   boundsDelay: 0.2
   tiltSpeed: 10
   yawSpeed: 10
-  minTilt: 45
+  minTilt: 65
   maxTilt: 90
   resetRotationDuration: 0.5
 --- !u!4 &1983216283
