@@ -12,8 +12,7 @@ public enum AgentState
 public class Agent : MonoBehaviour
 {
     /// <summary>
-    /// Holds the currently selected agent.
-    /// Only one agent can be selected at a time.
+    /// Holds the currently selected agent. Only one agent can be selected at a time.
     /// </summary>
     public static Agent SelectedAgent { get; private set; }
 
@@ -36,7 +35,7 @@ public class Agent : MonoBehaviour
     {
         navAgent = GetComponent<NavMeshAgent>();
 
-        // Find the child "SelectedCylinder" and disable it.
+        // Find and cache the "SelectedCylinder" child.
         Transform sel = transform.Find("SelectedCylinder");
         if (sel != null)
         {
@@ -44,7 +43,7 @@ public class Agent : MonoBehaviour
             selectedIndicator.SetActive(false);
         }
 
-        // Find the child "HighlightCylinder" and disable it.
+        // Find and cache the "HighlightCylinder" child.
         Transform high = transform.Find("HighlightCylinder");
         if (high != null)
         {
@@ -55,7 +54,7 @@ public class Agent : MonoBehaviour
 
     private void Start()
     {
-        // Delay starting the agent's behavior until it's on a valid NavMesh.
+        // Delay starting the FSM until the agent is on a valid NavMesh.
         StartCoroutine(EnableAgentWhenReady());
     }
 
@@ -96,37 +95,46 @@ public class Agent : MonoBehaviour
         }
     }
 
-    // ---------------- Mouse Over Highlighting ----------------
+    // --------------- Mouse Hover for Cursor Change ---------------
 
     /// <summary>
-    /// Called when the mouse cursor enters this agent's collider.
-    /// If this agent is not selected, the "HighlightCylinder" child is enabled.
+    /// Called when the mouse enters this agent's collider.
+    /// If this agent is not selected, it enables its highlight indicator
+    /// and signals the UICursorManager to change the cursor image.
     /// </summary>
     private void OnMouseEnter()
     {
-        if (SelectedAgent != this && highlightIndicator != null)
+        if (SelectedAgent != this)
         {
-            highlightIndicator.SetActive(true);
+            if (highlightIndicator != null)
+                highlightIndicator.SetActive(true);
+
+            if (UICursorManager.Instance != null)
+                UICursorManager.Instance.SetHoverCursor();
         }
     }
 
     /// <summary>
-    /// Called when the mouse cursor exits this agent's collider.
-    /// Disables the "HighlightCylinder" child.
+    /// Called when the mouse exits this agent's collider.
+    /// Disables the highlight indicator and signals the UICursorManager to reset the cursor image.
     /// </summary>
     private void OnMouseExit()
     {
-        if (highlightIndicator != null)
+        if (SelectedAgent != this)
         {
-            highlightIndicator.SetActive(false);
+            if (highlightIndicator != null)
+                highlightIndicator.SetActive(false);
+
+            if (UICursorManager.Instance != null)
+                UICursorManager.Instance.ResetCursorImage();
         }
     }
 
-    // ---------------- Selection and User Input ----------------
+    // --------------- Selection and User Input ---------------
 
     /// <summary>
     /// Called when this agent is clicked.
-    /// If it is not already selected, it becomes the selected agent.
+    /// If this agent is not already selected, it becomes the selected agent.
     /// </summary>
     private void OnMouseDown()
     {
@@ -140,32 +148,30 @@ public class Agent : MonoBehaviour
     }
 
     /// <summary>
-    /// Selects this agent. Enables its selection indicator and stops its current navigation.
+    /// Selects this agent, enables its selection indicator, disables its highlight indicator,
+    /// and resets its navigation.
     /// </summary>
     private void Select()
     {
         SelectedAgent = this;
         if (selectedIndicator != null)
-        {
             selectedIndicator.SetActive(true);
-        }
-        // Disable the highlight when selected.
         if (highlightIndicator != null)
-        {
             highlightIndicator.SetActive(false);
-        }
         navAgent.ResetPath();
+
+        // Also, ensure the cursor reverts to its default image.
+        if (UICursorManager.Instance != null)
+            UICursorManager.Instance.ResetCursorImage();
     }
 
     /// <summary>
-    /// Deselects this agent. Disables its selection indicator and restarts the FSM.
+    /// Deselects this agent, disables its selection indicator, and restarts its FSM.
     /// </summary>
     public void Deselect()
     {
         if (selectedIndicator != null)
-        {
             selectedIndicator.SetActive(false);
-        }
         if (SelectedAgent == this)
         {
             SelectedAgent = null;
@@ -175,7 +181,7 @@ public class Agent : MonoBehaviour
 
     /// <summary>
     /// Handles user input when this agent is selected.
-    /// Q key deselects the agent, and a left mouse click on a floor (tagged "Floor") causes the agent to move there.
+    /// Q key deselects, left mouse click on a "Floor" sets a destination.
     /// </summary>
     private void HandleUserInput()
     {
@@ -199,12 +205,8 @@ public class Agent : MonoBehaviour
         }
     }
 
-    // ---------------- FSM Methods ----------------
+    // --------------- FSM Methods ---------------
 
-    /// <summary>
-    /// Transitions the agent to the specified state.
-    /// </summary>
-    /// <param name="newState">The new state to transition to.</param>
     private void TransitionToState(AgentState newState)
     {
         currentState = newState;
@@ -219,9 +221,6 @@ public class Agent : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Sets a random destination for the agent within wanderRadius.
-    /// </summary>
     private void SetRandomDestination()
     {
         Vector3 randomDirection = Random.insideUnitSphere * wanderRadius;
