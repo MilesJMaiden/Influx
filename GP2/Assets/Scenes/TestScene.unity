@@ -421,7 +421,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4b95ea4b509dcdc47a0c560a788804b3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  assignedCamera: {fileID: 1983216284}
   cursorImage: {fileID: 220228930}
+  defaultCursorSprite: {fileID: 3286163911610860551, guid: a5f2e26d177e0a24da26e7f389d92b8c,
+    type: 3}
+  hoverCursorSprite: {fileID: 3286163911610860551, guid: a99452f4ec5964b4abcfade2d16bfba6,
+    type: 3}
 --- !u!4 &491460445
 Transform:
   m_ObjectHideFlags: 0
