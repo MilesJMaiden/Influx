@@ -5,7 +5,11 @@ public class RockBin : Interactable
 {
     protected override void OnClicked()
     {
-        // your RockBin-specific click logic here
         Debug.Log("RockBin clicked!");
+        var agent = Agent.SelectedAgent;
+        if (agent != null && !agent.IsCarryingRock && !agent.IsCarryingRefined)
+        {
+            agent.CommandPickupRock(this);
+        }
     }
 }
