@@ -39,6 +39,7 @@ public class Agent : MonoBehaviour
     // add at the top, with your other consts:
     const float rockPickupRadius = 3f;
     const float tableProcessRadius = 3f;
+    const float binDepositRadius = 3f;
 
     public bool IsCarryingRock { get; private set; }
     public bool IsCarryingRefined { get; private set; }
@@ -85,6 +86,12 @@ public class Agent : MonoBehaviour
 
     private void Update()
     {
+
+        if (Input.GetKeyDown(KeyCode.Q) && SelectedAgent != null)
+        {
+            SelectedAgent.Deselect();
+            return;  // bail out of any other per‑frame logic
+        }
         // deplete own fuel
         if (fuelSlider)
             fuelSlider.value = Mathf.Max(0f, fuelSlider.value - fuelDepleteRate * Time.deltaTime);
@@ -197,80 +204,116 @@ public class Agent : MonoBehaviour
 
     private void RockPipelineBehavior()
     {
-        // cache references
-        var rockBin = FindObjectOfType<RockBin>();
-        var table = FindObjectOfType<Table>();
-        var bin = FindObjectOfType<Bin>();
-
         switch (currentState)
         {
             case AgentState.MoveToRockBin:
-                if (rockBin != null &&
-                    Vector3.Distance(transform.position, rockBin.transform.position) <= rockPickupRadius)
                 {
-                    // pick up rock
-                    IsCarryingRock = true;
-                    transform.Find("Rock")?.gameObject.SetActive(true);
-                    TransitionTo(AgentState.MoveToTable);
+                    var rockBin = FindObjectOfType<RockBin>();
+                    if (rockBin == null)
+                    {
+                        Debug.LogWarning("Agent: No RockBin found in scene.");
+                        return;
+                    }
+
+                    float d = Vector3.Distance(transform.position, rockBin.transform.position);
+                    if (d <= rockPickupRadius)
+                    {
+                        // pick up rock
+                        IsCarryingRock = true;
+                        transform.Find("Rock")?.gameObject.SetActive(true);
+
+                        // if this agent is selected, stay idle
+                        if (SelectedAgent == this)
+                        {
+                            TransitionTo(AgentState.Idle);
+                        }
+                        else
+                        {
+                            // move to table
+                            currentState = AgentState.MoveToTable;
+                            var table = FindObjectOfType<Table>();
+                            if (table != null)
+                                navAgent.SetDestination(table.transform.position);
+                            else
+                                Debug.LogWarning("Agent: No Table found to deliver rock to.");
+                        }
+                    }
+                    break;
                 }
-                break;
 
             case AgentState.MoveToTable:
-                if (table != null &&
-                    Vector3.Distance(transform.position, table.transform.position) <= tableProcessRadius)
                 {
-                    // arrived at table
-                    transform.Find("Rock")?.gameObject.SetActive(false);
-                    IsCarryingRock = false;
-                    table.transform.Find("Rock")?.gameObject.SetActive(true);
-
-                    var tableSlider = table.GetComponentInChildren<Slider>();
-                    if (tableSlider)
+                    var table = FindObjectOfType<Table>();
+                    if (table == null)
                     {
-                        tableSlider.value = 0f;
-                        tableSlider.gameObject.SetActive(true);
-                        currentState = AgentState.RefineRock;
-                        refineRoutine = StartCoroutine(RefineCoroutine(tableSlider, table));
+                        Debug.LogWarning("Agent: No Table found in scene.");
+                        return;
                     }
+
+                    float d = Vector3.Distance(transform.position, table.transform.position);
+                    if (d <= tableProcessRadius)
+                    {
+                        // drop agent's rock
+                        transform.Find("Rock")?.gameObject.SetActive(false);
+                        IsCarryingRock = false;
+
+                        // put rock on table
+                        table.transform.Find("Rock")?.gameObject.SetActive(true);
+
+                        // enable & reset table slider
+                        var tableSlider = table.GetComponentInChildren<Slider>();
+                        if (tableSlider != null)
+                        {
+                            tableSlider.value = 0f;
+                            tableSlider.gameObject.SetActive(true);
+
+                            // if selected, go idle
+                            if (SelectedAgent == this)
+                            {
+                                TransitionTo(AgentState.Idle);
+                            }
+                            else
+                            {
+                                // begin refining
+                                currentState = AgentState.RefineRock;
+                                refineRoutine = StartCoroutine(RefineCoroutine(tableSlider, table));
+                            }
+                        }
+                        else Debug.LogWarning("Agent: Table has no Slider to refine rock.");
+                    }
+                    break;
                 }
-                break;
 
             case AgentState.MoveToBin:
-                if (bin != null &&
-                    Vector3.Distance(transform.position, bin.transform.position) <= navAgent.stoppingDistance)
                 {
-                    // deposit refined rock
-                    transform.Find("RefinedRock")?.gameObject.SetActive(false);
-                    IsCarryingRefined = false;
-                    if (fuelSlider)
-                        fuelSlider.value = Mathf.Min(1f, fuelSlider.value + fuelRefuelAmount);
-                    TransitionTo(AgentState.Idle);
+                    var bin = FindObjectOfType<Bin>();
+                    if (bin == null) break;
+
+                    float d = Vector3.Distance(transform.position, bin.transform.position);
+                    if (d <= binDepositRadius)
+                    {
+                        // Hide the agent's refined rock
+                        transform.Find("RefinedRock")?.gameObject.SetActive(false);
+                        IsCarryingRefined = false;
+
+                        // Add fuel to the bin
+                        bin.AddFuel(fuelRefuelAmount);
+
+                        // selected agents go Idle, others resume Wandering
+                        if (SelectedAgent == this)
+                            TransitionTo(AgentState.Idle);
+                        else
+                            TransitionTo(AgentState.Wander);
+                    }
+                    break;
                 }
-                break;
         }
-    }
-
-
-
-    private bool ArrivedAtTag(string tag)
-    {
-        var obj = GameObject.FindWithTag(tag);
-        if (obj == null) return false;
-        return Vector3.Distance(transform.position, obj.transform.position) <= navAgent.stoppingDistance;
     }
 
     public void CommandPickupRock(RockBin bin)
     {
         currentState = AgentState.MoveToRockBin;
         navAgent.SetDestination(bin.transform.position);
-    }
-
-    private void BeginMoveToTable()
-    {
-        currentState = AgentState.MoveToTable;
-        var tbl = FindObjectOfType<Table>();
-        if (tbl != null)
-            navAgent.SetDestination(tbl.transform.position);
     }
 
     // replace your old RefineCoroutine(...) with this signature & body:
@@ -297,7 +340,6 @@ public class Agent : MonoBehaviour
         if (bin != null)
             navAgent.SetDestination(bin.transform.position);
     }
-
 
     // —— Mouse Hover & Cursor ——
 

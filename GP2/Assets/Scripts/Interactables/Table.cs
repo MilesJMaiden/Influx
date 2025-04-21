@@ -8,14 +8,24 @@ public class Table : Interactable
     private Slider _slider;
     private bool _isProcessing = false;
 
-    private void Awake()
+    protected override void Awake()
     {
+        // ensure Interactable.Awake runs and _highlight is hooked up
+        base.Awake();
+
         // cache the Rock child
         _rockObject = transform.Find("Rock")?.gameObject;
-        // cache the Slider in our Canvas
-        _slider = GetComponentInChildren<Slider>();
-        if (_slider != null)
+
+        // cache the Slider in our Canvas (include inactive!)
+        _slider = GetComponentInChildren<Slider>(true);
+        if (_slider == null)
+        {
+            Debug.LogError($"{name}: no Slider found in children!");
+        }
+        else
+        {
             _slider.gameObject.SetActive(false);
+        }
     }
 
     private void Update()
@@ -23,15 +33,15 @@ public class Table : Interactable
         // as soon as Rock is enabled and we're not already processing...
         if (_rockObject != null
             && _rockObject.activeSelf
-            && !_isProcessing)
+            && !_isProcessing
+            && _slider != null)
         {
             _isProcessing = true;
+
             // initialize slider
-            if (_slider != null)
-            {
-                _slider.value = 0f;
-                _slider.gameObject.SetActive(true);
-            }
+            _slider.value = 0f;
+            _slider.gameObject.SetActive(true);
+
             StartCoroutine(ProcessRoutine());
         }
     }
@@ -43,17 +53,13 @@ public class Table : Interactable
         while (elapsed < duration)
         {
             elapsed += Time.deltaTime;
-            if (_slider != null)
-                _slider.value = Mathf.Clamp01(elapsed / duration);
+            _slider.value = Mathf.Clamp01(elapsed / duration);
             yield return null;
         }
 
         // done
-        if (_slider != null)
-        {
-            _slider.value = 0f;
-            _slider.gameObject.SetActive(false);
-        }
+        _slider.gameObject.SetActive(false);
+        _slider.value = 0f;
         _rockObject.SetActive(false);
         _isProcessing = false;
     }

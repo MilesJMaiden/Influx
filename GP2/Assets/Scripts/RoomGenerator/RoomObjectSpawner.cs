@@ -32,18 +32,17 @@ public class RoomObjectSpawner : IRoomObjectSpawner
     // Vertical offset to raise displays off the floor.
     private const float WallDisplayHeight = 2.5f;
 
-    // Constant for interior margin (used for Container and Computer spawns)
-    private const float spawnMargin = 1f;
     // Margin for bigger objects (applied to all other objects)
-    private const float bigObjectMargin = 3f;
-    // New: Extra spacing between big objects
-    private const float bigObjectSpacing = 5f;
-    // New: Extra spacing for Computer objects so they do not overlap with any other objects.
-    private const float computerSpacing = 3f;
+    private const float bigObjectMargin = 4f;
+    private const float bigObjectSpacing = 6f;
+    private const float computerSpacing = 2f;
+    // How far from any other object a Container must spawn
+    private const float containerSpacing = 4f;
+
     // Default safe offset to keep spawns away from walls.
     private const float defaultSafeOffset = 2.5f;
     // Wall margin: objects (except WallDisplay) must be at least this far from any wall.
-    private const float wallMargin = 4f;
+    private const float wallMargin = 2f;
 
     private readonly ObjectPool containerPool;
     private readonly ObjectPool computerPool;
@@ -64,8 +63,10 @@ public class RoomObjectSpawner : IRoomObjectSpawner
 
     // List to track positions of spawned big objects (generic objects)
     private readonly List<Vector3> placedBigObjectPositions = new();
-    // New: List to track positions of spawned Computer objects.
+
     private readonly List<Vector3> placedComputerPositions = new();
+    // Track where we’ve placed containers
+    private readonly List<Vector3> placedContainerPositions = new();
 
     // Flag indicating if this spawner is for a corridor.
     private readonly bool isCorridor;
@@ -237,113 +238,83 @@ public class RoomObjectSpawner : IRoomObjectSpawner
                 bool spawnSuccess = false;
                 int attempts = 0;
 
-                if (entry.prefab.CompareTag("WallDisplay") && wallPositions.Count > 0)
+                // Try up to maxAttempts to find a valid spot
+                while (!spawnSuccess && attempts < maxAttempts)
                 {
-                    var candidate = wallPositions[Random.Range(0, wallPositions.Count)];
-                    spawnPos = candidate.position + new Vector3(0, WallDisplayHeight, 0);
-                    float yRot = candidate.rotation.eulerAngles.y;
-                    if (Mathf.Approximately(yRot, 270f) || Mathf.Approximately(yRot, -90f))
-                        spawnPos.x -= offsetForNeg90;
-                    else if (Mathf.Approximately(yRot, 180f))
-                        spawnPos.z -= offsetFor180;
-                    else if (Mathf.Approximately(yRot, 90f))
-                        spawnPos.x -= offsetFor90;
-                    else if (Mathf.Approximately(yRot, 0f))
-                        spawnPos.z -= offsetFor0;
-                    spawnRot = candidate.rotation;
-                    spawnSuccess = true;
-                }
-                else if (entry.prefab.CompareTag("Container"))
-                {
-                    if (!TryGetValidPosition(cornerPositions, entry.prefab, out spawnPos))
+                    attempts++;
+
+                    if (entry.prefab.CompareTag("WallDisplay") && wallPositions.Count > 0)
                     {
-                        while (attempts < maxAttempts)
+                        var candidate = wallPositions[Random.Range(0, wallPositions.Count)];
+                        spawnPos = candidate.position + new Vector3(0, WallDisplayHeight, 0);
+                        float yRot = candidate.rotation.eulerAngles.y;
+                        if (Mathf.Approximately(yRot, 270f) || Mathf.Approximately(yRot, -90f))
+                            spawnPos.x -= offsetForNeg90;
+                        else if (Mathf.Approximately(yRot, 180f))
+                            spawnPos.z -= offsetFor180;
+                        else if (Mathf.Approximately(yRot, 90f))
+                            spawnPos.x -= offsetFor90;
+                        else if (Mathf.Approximately(yRot, 0f))
+                            spawnPos.z -= offsetFor0;
+                        spawnRot = candidate.rotation;
+                        spawnSuccess = true; // wall displays don't overlap anything else
+                    }
+                    else if (entry.prefab.CompareTag("Container"))
+                    {
+                        if (!TryGetValidPosition(cornerPositions, entry.prefab, out spawnPos))
                         {
                             spawnPos = GetRandomPositionWithinSafeArea(containerMargin);
-                            if (ValidateSpawnCandidate(spawnPos, Quaternion.identity, entry.prefab))
-                            {
-                                spawnSuccess = true;
-                                break;
-                            }
-                            attempts++;
                         }
-                    }
-                    else
-                    {
                         spawnSuccess = ValidateSpawnCandidate(spawnPos, Quaternion.identity, entry.prefab);
-                    }
-                }
-                else if (entry.prefab.CompareTag("Computer"))
-                {
-                    if (!TryGetValidPosition(computerPositions, entry.prefab, out spawnPos))
-                    {
-                        while (attempts < maxAttempts)
-                        {
-                            spawnPos = GetRandomPositionWithinSafeArea(computerMargin);
-                            if (ValidateSpawnCandidate(spawnPos, Quaternion.identity, entry.prefab))
-                            {
-                                spawnSuccess = true;
-                                break;
-                            }
-                            attempts++;
-                        }
-                    }
-                    else
-                    {
-                        spawnSuccess = ValidateSpawnCandidate(spawnPos, Quaternion.identity, entry.prefab);
-                    }
-                }
-                else if (entry.prefab.CompareTag("WindowWall"))
-                {
-                    // For WindowWall spawns, restrict candidate positions to the center of each wall.
-                    float roomWidthWorld = width * TileSize;
-                    float roomHeightWorld = height * TileSize;
-                    List<Vector3> windowWallCandidates = new List<Vector3>()
-                    {
-                        new Vector3(roomWidthWorld / 2f, 0, 0),                     // Bottom wall center
-                        new Vector3(roomWidthWorld / 2f, 0, roomHeightWorld),         // Top wall center
-                        new Vector3(0, 0, roomHeightWorld / 2f),                      // Left wall center
-                        new Vector3(roomWidthWorld, 0, roomHeightWorld / 2f)          // Right wall center
-                    };
-                    spawnPos = windowWallCandidates[Random.Range(0, windowWallCandidates.Count)];
-                    spawnSuccess = ValidateSpawnCandidate(spawnPos, Quaternion.identity, entry.prefab);
-                }
-                // All other objects use the larger safe area (bigObjectMargin)
-                else
-                {
-                    while (!spawnSuccess && attempts < maxAttempts)
-                    {
-                        spawnPos = GetRandomPositionWithinSafeArea(bigObjectMargin);
-                        if (ValidateSpawnCandidate(spawnPos, Quaternion.identity, entry.prefab))
-                        {
-                            spawnSuccess = true;
-                            break;
-                        }
-                        attempts++;
-                    }
-                }
-
-                if (spawnSuccess)
-                {
-                    Object.Instantiate(entry.prefab, roomParent.TransformPoint(spawnPos), spawnRot, roomParent);
-
-                    // Record positions for extra spacing checks.
-                    if (IsBigObject(entry.prefab))
-                    {
-                        placedBigObjectPositions.Add(spawnPos);
                     }
                     else if (entry.prefab.CompareTag("Computer"))
                     {
-                        placedComputerPositions.Add(spawnPos);
+                        if (!TryGetValidPosition(computerPositions, entry.prefab, out spawnPos))
+                        {
+                            spawnPos = GetRandomPositionWithinSafeArea(computerMargin);
+                        }
+                        spawnSuccess = ValidateSpawnCandidate(spawnPos, Quaternion.identity, entry.prefab);
+                    }
+                    else if (entry.prefab.CompareTag("WindowWall"))
+                    {
+                        float roomWidthWorld = width * TileSize;
+                        float roomHeightWorld = height * TileSize;
+                        var windowWallCandidates = new List<Vector3>()
+                    {
+                        new Vector3(roomWidthWorld / 2f, 0, 0),
+                        new Vector3(roomWidthWorld / 2f, 0, roomHeightWorld),
+                        new Vector3(0, 0, roomHeightWorld / 2f),
+                        new Vector3(roomWidthWorld, 0, roomHeightWorld / 2f)
+                    };
+                        spawnPos = windowWallCandidates[Random.Range(0, windowWallCandidates.Count)];
+                        spawnSuccess = ValidateSpawnCandidate(spawnPos, Quaternion.identity, entry.prefab);
+                    }
+                    else
+                    {
+                        spawnPos = GetRandomPositionWithinSafeArea(bigObjectMargin);
+                        spawnSuccess = ValidateSpawnCandidate(spawnPos, Quaternion.identity, entry.prefab);
                     }
                 }
-                else
+
+                if (!spawnSuccess)
                 {
-                    Debug.LogWarning($"Failed to spawn {entry.prefab.name} in a non-overlapping position after {maxAttempts} attempts.");
+                    Debug.LogWarning($"Failed to spawn {entry.prefab.name} after {maxAttempts} attempts.");
+                    continue;
                 }
+
+                // Instantiate and record for spacing
+                Object.Instantiate(entry.prefab, roomParent.TransformPoint(spawnPos), spawnRot, roomParent);
+
+                if (IsBigObject(entry.prefab))
+                    placedBigObjectPositions.Add(spawnPos);
+                else if (entry.prefab.CompareTag("Computer"))
+                    placedComputerPositions.Add(spawnPos);
+                else if (entry.prefab.CompareTag("Container"))
+                    placedContainerPositions.Add(spawnPos);
             }
         }
     }
+
 
     /// <summary>
     /// Returns a random position within the safe area computed from the given margin.
@@ -457,6 +428,24 @@ public class RoomObjectSpawner : IRoomObjectSpawner
             {
                 return false;
             }
+        }
+
+        if (prefab.CompareTag("Container"))
+        {
+            // Check against already placed containers
+            foreach (var pos in placedContainerPositions)
+                if (Vector3.Distance(candidate, pos) < containerSpacing)
+                    return false;
+
+            // Check against big objects
+            foreach (var pos in placedBigObjectPositions)
+                if (Vector3.Distance(candidate, pos) < containerSpacing)
+                    return false;
+
+            // Check against computers
+            foreach (var pos in placedComputerPositions)
+                if (Vector3.Distance(candidate, pos) < containerSpacing)
+                    return false;
         }
 
         // For big objects, enforce extra spacing from already spawned big objects.
