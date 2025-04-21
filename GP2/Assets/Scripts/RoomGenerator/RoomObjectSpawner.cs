@@ -19,7 +19,7 @@ public struct SafeArea
 }
 #endregion
 
-public class RoomObjectSpawner : IRoomObjectSpawner
+public class RoomObjectSpawner : MonoBehaviour
 {
     private const float TileSize = 5f;
     // How far inside the wall displays are offset from the wall.
@@ -213,23 +213,23 @@ public class RoomObjectSpawner : IRoomObjectSpawner
     /// All other objects are spawned using the larger safe area defined by bigObjectMargin.
     /// Additionally, extra spacing checks are applied for big objects and for Computer objects.
     /// </summary>
-    public void SpawnObjects()
+    // RoomObjectSpawner.cs
+    public bool SpawnObjects()
     {
         if (isCorridor)
-            return;
+            return true;
         if (spawnSettings == null || spawnSettings.spawnEntries == null || spawnSettings.spawnEntries.Length == 0)
-            return;
+            return true;
 
         int maxAttempts = 5;
+        bool allSucceeded = true;
 
         foreach (SpawnEntry entry in spawnSettings.spawnEntries)
         {
             // Skip Agent and Wall spawn entries.
             if (entry.prefab != null &&
                 (entry.prefab.CompareTag("Agent") || entry.prefab.CompareTag("Wall")))
-            {
                 continue;
-            }
 
             for (int i = 0; i < entry.count; i++)
             {
@@ -238,13 +238,14 @@ public class RoomObjectSpawner : IRoomObjectSpawner
                 bool spawnSuccess = false;
                 int attempts = 0;
 
-                // Try up to maxAttempts to find a valid spot
+                // try up to maxAttempts
                 while (!spawnSuccess && attempts < maxAttempts)
                 {
                     attempts++;
 
                     if (entry.prefab.CompareTag("WallDisplay") && wallPositions.Count > 0)
                     {
+                        // EXACTLY your existing WallDisplay logic:
                         var candidate = wallPositions[Random.Range(0, wallPositions.Count)];
                         spawnPos = candidate.position + new Vector3(0, WallDisplayHeight, 0);
                         float yRot = candidate.rotation.eulerAngles.y;
@@ -257,22 +258,18 @@ public class RoomObjectSpawner : IRoomObjectSpawner
                         else if (Mathf.Approximately(yRot, 0f))
                             spawnPos.z -= offsetFor0;
                         spawnRot = candidate.rotation;
-                        spawnSuccess = true; // wall displays don't overlap anything else
+                        spawnSuccess = true;
                     }
                     else if (entry.prefab.CompareTag("Container"))
                     {
                         if (!TryGetValidPosition(cornerPositions, entry.prefab, out spawnPos))
-                        {
                             spawnPos = GetRandomPositionWithinSafeArea(containerMargin);
-                        }
                         spawnSuccess = ValidateSpawnCandidate(spawnPos, Quaternion.identity, entry.prefab);
                     }
                     else if (entry.prefab.CompareTag("Computer"))
                     {
                         if (!TryGetValidPosition(computerPositions, entry.prefab, out spawnPos))
-                        {
                             spawnPos = GetRandomPositionWithinSafeArea(computerMargin);
-                        }
                         spawnSuccess = ValidateSpawnCandidate(spawnPos, Quaternion.identity, entry.prefab);
                     }
                     else if (entry.prefab.CompareTag("WindowWall"))
@@ -298,11 +295,12 @@ public class RoomObjectSpawner : IRoomObjectSpawner
 
                 if (!spawnSuccess)
                 {
-                    Debug.LogWarning($"Failed to spawn {entry.prefab.name} after {maxAttempts} attempts.");
+                    Debug.LogWarning($"Failed to spawn {entry.prefab.name} instance #{i} after {maxAttempts} attempts.");
+                    allSucceeded = false;
                     continue;
                 }
 
-                // Instantiate and record for spacing
+                // instantiate & record spacing exactly as before
                 Object.Instantiate(entry.prefab, roomParent.TransformPoint(spawnPos), spawnRot, roomParent);
 
                 if (IsBigObject(entry.prefab))
@@ -313,7 +311,10 @@ public class RoomObjectSpawner : IRoomObjectSpawner
                     placedContainerPositions.Add(spawnPos);
             }
         }
+
+        return allSucceeded;
     }
+
 
 
     /// <summary>

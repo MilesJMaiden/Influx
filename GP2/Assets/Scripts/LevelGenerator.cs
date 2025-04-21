@@ -39,133 +39,130 @@ public class LevelGenerator : MonoBehaviour
 
     private void Start()
     {
-        // Use the number of spawn settings as the room count.
+        const int maxRetries = 3;
+        int attempt = 0;
+        bool success = false;
+
+        while (!success && attempt < maxRetries)
+        {
+            attempt++;
+            success = BuildLevel();
+            if (!success)
+            {
+                Debug.LogWarning($"Level generation attempt {attempt} failed—destroying & retrying.");
+                // tear down everything created so far
+                for (int i = transform.childCount - 1; i >= 0; i--)
+                    DestroyImmediate(transform.GetChild(i).gameObject);
+            }
+        }
+
+        if (!success)
+            Debug.LogError("LevelGenerator: all generation attempts failed.");
+    }
+
+    /// <summary>
+    /// Moves all of your original Start() logic here, except:
+    /// 1) Wherever you call spawner.SpawnObjects(), capture its bool return.
+    /// 2) If any call returns false, immediately return false (to trigger a retry).
+    /// 3) At the end, return true.
+    /// </summary>
+    private bool BuildLevel()
+    {
+        // 1) Room layout
         int roomCount = designSettings.roomSpawnSettings.Length;
         rooms = GenerateRooms(roomCount);
-        Dictionary<RoomData, Vector3> basePositions = ComputeBasePositions(rooms);
-        Dictionary<RoomData, Vector3> roomPositions = ComputeRoomPositions(rooms, basePositions);
+        var basePositions = ComputeBasePositions(rooms);
+        var roomPositions = ComputeRoomPositions(rooms, basePositions);
 
-        GameObject levelContainer = new GameObject("Level");
+        // 2) Root containers
+        var levelContainer = new GameObject("Level");
         levelContainer.transform.parent = transform;
-
-        // Create a container for corridors.
-        GameObject corridorContainer = new GameObject("Corridors");
+        var corridorContainer = new GameObject("Corridors");
         corridorContainer.transform.parent = levelContainer.transform;
 
-        // This list will hold data needed for agent spawning after the NavMesh is built.
-        List<(Transform roomContainer, Vector2 dimensions, RoomSpawnSettings spawnSettings)> agentRoomData =
-            new List<(Transform, Vector2, RoomSpawnSettings)>();
+        // 3) Gather for agent spawn
+        var agentRoomData = new List<(Transform, Vector2, RoomSpawnSettings)>();
+        var roomLookup = new Dictionary<RoomData, Transform>();
 
-        Dictionary<RoomData, Transform> roomLookup = new Dictionary<RoomData, Transform>();
+        // 4) Build each room
         for (int i = 0; i < rooms.Count; i++)
         {
-            RoomData room = rooms[i];
-            // Create room container.
-            GameObject roomContainer = new GameObject("Room_" + room.gridPosition.x + "_" + room.gridPosition.y);
-            roomContainer.transform.parent = levelContainer.transform;
-            roomContainer.transform.position = roomPositions.ContainsKey(room) ? roomPositions[room] : Vector3.zero;
-            roomLookup[room] = roomContainer.transform;
+            var room = rooms[i];
+            // container
+            var roomGO = new GameObject($"Room_{room.gridPosition.x}_{room.gridPosition.y}");
+            roomGO.transform.parent = levelContainer.transform;
+            roomGO.transform.position = roomPositions[room];
+            roomLookup[room] = roomGO.transform;
 
-            // Compute room size in world units.
-            float roomWidthWorld = room.dimensions.x * TileSize;
-            float roomHeightWorld = room.dimensions.y * TileSize;
-            RoomFloorGenerator floorGen = new RoomFloorGenerator(floorQuadPrefab, roomContainer.transform, roomWidthWorld, roomHeightWorld);
-            floorGen.GenerateFloor();
+            // floor
+            float w = room.dimensions.x * TileSize;
+            float h = room.dimensions.y * TileSize;
+            new RoomFloorGenerator(floorQuadPrefab, roomGO.transform, w, h).GenerateFloor();
 
-            // Create room-specific object pools.
-            ObjectPool roomFloorPool = new ObjectPool(floorPrefab, roomContainer.transform, 100);
-            ObjectPool roomWallPool = new ObjectPool(wallPrefab, roomContainer.transform, 50);
-            ObjectPool roomWindowWallPool = new ObjectPool(windowWallPrefab, roomContainer.transform, 10);
-            ObjectPool roomDoorPool = new ObjectPool(doorPrefab, roomContainer.transform, 4);
-            ObjectPool roomWallDisplayPool = new ObjectPool(wallDisplayPrefab, roomContainer.transform, 10);
+            // pools + geometry
+            var floorPool = new ObjectPool(floorPrefab, roomGO.transform, 100);
+            var wallPool = new ObjectPool(wallPrefab, roomGO.transform, 50);
+            var winPool = new ObjectPool(windowWallPrefab, roomGO.transform, 10);
+            var doorPool = new ObjectPool(doorPrefab, roomGO.transform, 4);
+            var dispPool = new ObjectPool(wallDisplayPrefab, roomGO.transform, 10);
 
-            // Generate room geometry.
-            RoomGenerator roomGen = new RoomGenerator(
-                width: (int)room.dimensions.x,
-                height: (int)room.dimensions.y,
-                floorPool: roomFloorPool,
-                wallPool: roomWallPool,
-                windowWallPool: roomWindowWallPool,
-                doorPool: roomDoorPool,
-                wallDisplayPool: roomWallDisplayPool,
-                connections: room.connections);
-            roomGen.GenerateRoom();
+            new RoomGenerator(
+                (int)room.dimensions.x,
+                (int)room.dimensions.y,
+                floorPool, wallPool, winPool, doorPool, dispPool,
+                room.connections
+            ).GenerateRoom();
 
-            // Use the spawn settings for this room.
-            RoomSpawnSettings spawnSettings = designSettings.roomSpawnSettings[i];
-            // Create object pools for object spawning.
-            ObjectPool roomContainerPool = new ObjectPool(containerPrefab, roomContainer.transform, 10);
-            ObjectPool roomComputerPool = new ObjectPool(computerPrefab, roomContainer.transform, 10);
-            // Create a spawner that uses these settings.
-            RoomObjectSpawner spawner = new RoomObjectSpawner(
-                width: (int)room.dimensions.x,
-                height: (int)room.dimensions.y,
-                spawnSettings: spawnSettings,
-                containerPool: roomContainerPool,
-                computerPool: roomComputerPool,
-                wallDisplayPool: roomWallDisplayPool,
-                roomParent: roomContainer.transform);
-            spawner.SpawnObjects();
+            // object spawner
+            var spawnSettings = designSettings.roomSpawnSettings[i];
+            var containerPool = new ObjectPool(containerPrefab, roomGO.transform, 10);
+            var computerPool = new ObjectPool(computerPrefab, roomGO.transform, 10);
+            var spawner = new RoomObjectSpawner(
+                                        (int)room.dimensions.x,
+                                        (int)room.dimensions.y,
+                                        spawnSettings,
+                                        containerPool,
+                                        computerPool,
+                                        dispPool,
+                                        roomGO.transform
+                                      );
+            if (!spawner.SpawnObjects())
+                return false;  // abort on any failure
 
-            // Instantiate corner walls.
-            Vector3 bottomLeftLocal = new Vector3(-1.25f, 0, -1.25f);
-            Vector3 bottomRightLocal = new Vector3(roomWidthWorld - 3.75f, 0, -1.25f);
-            Vector3 topLeftLocal = new Vector3(-1.25f, 0, roomHeightWorld - 3.75f);
-            Vector3 topRightLocal = new Vector3(roomWidthWorld - 3.75f, 0, roomHeightWorld - 3.75f);
-
-            // Define rotations for each corner.
-            Quaternion rotBottomLeft = Quaternion.Euler(0, 180, 0);
-            Quaternion rotBottomRight = Quaternion.Euler(0, 90, 0);
-            Quaternion rotTopLeft = Quaternion.Euler(0, 270, 0);
-            Quaternion rotTopRight = Quaternion.Euler(0, 0, 0);
-
-            Vector3[] cornerLocalPositions = new Vector3[]
+            // corner walls
+            var bl = new Vector3(-1.25f, 0, -1.25f);
+            var br = new Vector3(w - 3.75f, 0, -1.25f);
+            var tl = new Vector3(-1.25f, 0, h - 3.75f);
+            var tr = new Vector3(w - 3.75f, 0, h - 3.75f);
+            var rots = new Quaternion[]
             {
-                bottomLeftLocal,
-                bottomRightLocal,
-                topLeftLocal,
-                topRightLocal
+            Quaternion.Euler(0,180,0),
+            Quaternion.Euler(0, 90,0),
+            Quaternion.Euler(0,270,0),
+            Quaternion.Euler(0,  0,0)
             };
-            Quaternion[] cornerRotations = new Quaternion[]
-            {
-                rotBottomLeft,
-                rotBottomRight,
-                rotTopLeft,
-                rotTopRight
-            };
+            var poses = new Vector3[] { bl, br, tl, tr };
+            for (int j = 0; j < 4; j++)
+                Instantiate(cornerWallPrefab, roomGO.transform.TransformPoint(poses[j]), rots[j], roomGO.transform);
 
-            for (int j = 0; j < cornerLocalPositions.Length; j++)
-            {
-                Vector3 worldCorner = roomContainer.transform.TransformPoint(cornerLocalPositions[j]);
-                Object.Instantiate(cornerWallPrefab, worldCorner, cornerRotations[j], roomContainer.transform);
-            }
-
-            // Store room data for later agent spawning.
-            agentRoomData.Add((roomContainer.transform, room.dimensions, spawnSettings));
+            agentRoomData.Add((roomGO.transform, room.dimensions, spawnSettings));
         }
 
-        // Connect rooms via corridors.
+        // 5) Corridors, navmesh, agents, camera
         ConnectRooms(roomLookup, corridorContainer.transform);
-
-        // Bake all NavMesh surfaces.
         BakeNavMeshes();
 
-        // Now spawn agents after the NavMesh has been built.
-        foreach (var data in agentRoomData)
-        {
-            foreach (SpawnEntry entry in data.spawnSettings.spawnEntries)
-            {
+        foreach (var (roomT, dims, settings) in agentRoomData)
+            foreach (var entry in settings.spawnEntries)
                 if (entry.prefab != null && entry.prefab.CompareTag("Agent"))
-                {
-                    AgentManager.Instance.SpawnAgentsForRoom(data.roomContainer, data.dimensions, entry);
-                }
-            }
-        }
+                    AgentManager.Instance.SpawnAgentsForRoom(roomT, dims, entry);
 
-        // Compute the bounds of the levelContainer and set them for the CameraManager.
-        Bounds envBounds = ComputeBoundsFromChildren(levelContainer);
-        CameraManager.Instance.SetLevelBounds(envBounds);
+        var bounds = ComputeBoundsFromChildren(levelContainer);
+        CameraManager.Instance.SetLevelBounds(bounds);
+
+        return true;
     }
+
 
     /// <summary>
     /// Computes a bounding box that encapsulates all Renderers in the children of the given root.
