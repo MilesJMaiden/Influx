@@ -22,26 +22,22 @@ public struct SafeArea
 public class RoomObjectSpawner : MonoBehaviour
 {
     private const float TileSize = 5f;
-    // How far inside the wall displays are offset from the wall.
     private const float displayInset = 0.5f;
-    // Extra offsets based on rotation for wall displays.
+
+    // For wall displays.
     private const float offsetForNeg90 = 3f;   // For Y rotation -90 (or 270)
     private const float offsetFor180 = 3f;     // For Y rotation -180 (or 180)
     private const float offsetFor90 = 2f;      // For Y rotation 90
     private const float offsetFor0 = 2f;       // For Y rotation 0
-    // Vertical offset to raise displays off the floor.
     private const float WallDisplayHeight = 2.5f;
 
-    // Margin for bigger objects (applied to all other objects)
+    // Sacings
     private const float bigObjectMargin = 4f;
     private const float bigObjectSpacing = 6f;
     private const float computerSpacing = 2f;
-    // How far from any other object a Container must spawn
     private const float containerSpacing = 4f;
 
-    // Default safe offset to keep spawns away from walls.
     private const float defaultSafeOffset = 2.5f;
-    // Wall margin: objects (except WallDisplay) must be at least this far from any wall.
     private const float wallMargin = 2f;
 
     private readonly ObjectPool containerPool;
@@ -61,11 +57,8 @@ public class RoomObjectSpawner : MonoBehaviour
     private readonly List<Vector3> cornerPositions = new();
     private readonly List<Vector3> computerPositions = new();
 
-    // List to track positions of spawned big objects (generic objects)
     private readonly List<Vector3> placedBigObjectPositions = new();
-
     private readonly List<Vector3> placedComputerPositions = new();
-    // Track where we’ve placed containers
     private readonly List<Vector3> placedContainerPositions = new();
 
     // Flag indicating if this spawner is for a corridor.
