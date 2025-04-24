@@ -1,0 +1,145 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f3c0ea64e217efa47982a228f9f8be55, type: 3}
+  m_Name: LevelDesignSettingsHARD
+  m_EditorClassIdentifier: 
+  defaultRoomShape: 1
+  probabilitySquare: 0.5
+  probabilityLShaped: 0.4
+  probabilityTShaped: 0.2
+  defaultRoomSize: {x: 5, y: 5}
+  minRoomSize: {x: 4, y: 4}
+  maxRoomSize: {x: 8, y: 8}
+  connectionProbability: 1
+  roomSpawnSettings:
+  - roomIdentifier: Computer Room
+    spawnEntries:
+    - prefab: {fileID: 3920076611295411707, guid: 9bab78c4b75730f4b9f78fe020f992f0,
+        type: 3}
+      count: 3
+    - prefab: {fileID: 2381596440433889247, guid: 55f3f20f1a98ffc448344b01b1f6255a,
+        type: 3}
+      count: 3
+    - prefab: {fileID: 6992367028099511134, guid: b6ec086cdc52e6744919fe910cdc79c0,
+        type: 3}
+      count: 3
+    - prefab: {fileID: 1518458682938020491, guid: c21601fc6672e4e42a67ae7ff7173007,
+        type: 3}
+      count: 3
+  - roomIdentifier: Computer Room
+    spawnEntries:
+    - prefab: {fileID: 3920076611295411707, guid: 9bab78c4b75730f4b9f78fe020f992f0,
+        type: 3}
+      count: 3
+    - prefab: {fileID: 2381596440433889247, guid: 55f3f20f1a98ffc448344b01b1f6255a,
+        type: 3}
+      count: 3
+    - prefab: {fileID: 6992367028099511134, guid: b6ec086cdc52e6744919fe910cdc79c0,
+        type: 3}
+      count: 3
+    - prefab: {fileID: 1518458682938020491, guid: c21601fc6672e4e42a67ae7ff7173007,
+        type: 3}
+      count: 3
+  - roomIdentifier: Computer Room
+    spawnEntries:
+    - prefab: {fileID: 3920076611295411707, guid: 9bab78c4b75730f4b9f78fe020f992f0,
+        type: 3}
+      count: 3
+    - prefab: {fileID: 2381596440433889247, guid: 55f3f20f1a98ffc448344b01b1f6255a,
+        type: 3}
+      count: 3
+    - prefab: {fileID: 6992367028099511134, guid: b6ec086cdc52e6744919fe910cdc79c0,
+        type: 3}
+      count: 3
+    - prefab: {fileID: 1518458682938020491, guid: c21601fc6672e4e42a67ae7ff7173007,
+        type: 3}
+      count: 3
+  - roomIdentifier: Rock Testing Room
+    spawnEntries:
+    - prefab: {fileID: 3920076611295411707, guid: 9bab78c4b75730f4b9f78fe020f992f0,
+        type: 3}
+      count: 3
+    - prefab: {fileID: 2381596440433889247, guid: 55f3f20f1a98ffc448344b01b1f6255a,
+        type: 3}
+      count: 3
+    - prefab: {fileID: 6992367028099511134, guid: b6ec086cdc52e6744919fe910cdc79c0,
+        type: 3}
+      count: 3
+    - prefab: {fileID: 1518458682938020491, guid: c21601fc6672e4e42a67ae7ff7173007,
+        type: 3}
+      count: 3
+    - prefab: {fileID: 3165785929787020192, guid: c51aec182a3fa4248aedbd99f58e8e63,
+        type: 3}
+      count: 1
+    - prefab: {fileID: 1939970827074073826, guid: 42cf0c6b75c37d84f843d7ba3a9b8b07,
+        type: 3}
+      count: 1
+    - prefab: {fileID: 4803438951795339541, guid: ea78656b364d5c14f9c7ee17005235a2,
+        type: 3}
+      count: 1
+  - roomIdentifier: Rock Testing Room
+    spawnEntries:
+    - prefab: {fileID: 3920076611295411707, guid: 9bab78c4b75730f4b9f78fe020f992f0,
+        type: 3}
+      count: 3
+    - prefab: {fileID: 2381596440433889247, guid: 55f3f20f1a98ffc448344b01b1f6255a,
+        type: 3}
+      count: 3
+    - prefab: {fileID: 6992367028099511134, guid: b6ec086cdc52e6744919fe910cdc79c0,
+        type: 3}
+      count: 3
+    - prefab: {fileID: 1518458682938020491, guid: c21601fc6672e4e42a67ae7ff7173007,
+        type: 3}
+      count: 3
+    - prefab: {fileID: 3165785929787020192, guid: c51aec182a3fa4248aedbd99f58e8e63,
+        type: 3}
+      count: 1
+    - prefab: {fileID: 1939970827074073826, guid: 42cf0c6b75c37d84f843d7ba3a9b8b07,
+        type: 3}
+      count: 1
+    - prefab: {fileID: 4803438951795339541, guid: ea78656b364d5c14f9c7ee17005235a2,
+        type: 3}
+      count: 1
+  - roomIdentifier: Navigation Room
+    spawnEntries:
+    - prefab: {fileID: 3920076611295411707, guid: 9bab78c4b75730f4b9f78fe020f992f0,
+        type: 3}
+      count: 3
+    - prefab: {fileID: 2381596440433889247, guid: 55f3f20f1a98ffc448344b01b1f6255a,
+        type: 3}
+      count: 3
+    - prefab: {fileID: 6992367028099511134, guid: b6ec086cdc52e6744919fe910cdc79c0,
+        type: 3}
+      count: 3
+    - prefab: {fileID: 1518458682938020491, guid: c21601fc6672e4e42a67ae7ff7173007,
+        type: 3}
+      count: 3
+    - prefab: {fileID: 6895735688528718021, guid: 5e32538fe54c2d84280e619c38f10194,
+        type: 3}
+      count: 1
+  - roomIdentifier: Navigation Room
+    spawnEntries:
+    - prefab: {fileID: 3920076611295411707, guid: 9bab78c4b75730f4b9f78fe020f992f0,
+        type: 3}
+      count: 3
+    - prefab: {fileID: 2381596440433889247, guid: 55f3f20f1a98ffc448344b01b1f6255a,
+        type: 3}
+      count: 3
+    - prefab: {fileID: 6992367028099511134, guid: b6ec086cdc52e6744919fe910cdc79c0,
+        type: 3}
+      count: 3
+    - prefab: {fileID: 1518458682938020491, guid: c21601fc6672e4e42a67ae7ff7173007,
+        type: 3}
+      count: 3
+    - prefab: {fileID: 6895735688528718021, guid: 5e32538fe54c2d84280e619c38f10194,
+        type: 3}
+      count: 1

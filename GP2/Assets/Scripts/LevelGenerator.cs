@@ -2,6 +2,7 @@
 using System.Linq;
 using Unity.AI.Navigation;
 using UnityEngine;
+using UnityEngine.UI;
 using static UnityEditor.Searcher.SearcherWindow.Alignment;
 
 public enum DoorDirection { Top, Bottom, Left, Right }
@@ -20,7 +21,6 @@ public class LevelGenerator : MonoBehaviour
     public GameObject containerPrefab;
     public GameObject computerPrefab;
     public GameObject floorQuadPrefab;
-    // NEW: Corner Wall prefab
     public GameObject cornerWallPrefab;
 
     [Header("Layout Settings")]
@@ -37,27 +37,49 @@ public class LevelGenerator : MonoBehaviour
     private Dictionary<int, float> columnWidths;
     private Dictionary<int, float> rowHeights;
 
+    [Header("Variant Selection UI")]
+    [SerializeField] private Canvas variantSelectionCanvas;
+    [SerializeField] private Button[] variantButtons = new Button[3];
+    [SerializeField] private LevelDesignSettings[] designVariants = new LevelDesignSettings[3];
+
+    [Header("Audio")]
+    [SerializeField] private AudioSource sfxSource;
+    [SerializeField] private AudioClip selectClip;
+
     private void Start()
     {
-        const int maxRetries = 3;
-        int attempt = 0;
-        bool success = false;
+        variantSelectionCanvas.gameObject.SetActive(true);
 
-        while (!success && attempt < maxRetries)
+        for (int i = 0; i < variantButtons.Length; i++)
         {
-            attempt++;
+            int index = i;
+            variantButtons[index].onClick.RemoveAllListeners();
+            variantButtons[index].onClick.AddListener(() => OnVariantSelected(index));
+        }
+    }
+
+    private void OnVariantSelected(int variantIndex)
+    {
+        // play the click sound
+        if (sfxSource != null && selectClip != null)
+            sfxSource.PlayOneShot(selectClip);
+
+        // now hide UI & set the chosen settings
+        designSettings = designVariants[variantIndex];
+        variantSelectionCanvas.gameObject.SetActive(false);
+
+        bool success = false;
+        while (!success)
+        {
             success = BuildLevel();
             if (!success)
             {
-                Debug.LogWarning($"Level generation attempt {attempt} failed—destroying & retrying.");
+                Debug.LogWarning("Level generation failed—destroying & retrying.");
                 // tear down everything created so far
                 for (int i = transform.childCount - 1; i >= 0; i--)
                     DestroyImmediate(transform.GetChild(i).gameObject);
             }
         }
-
-        if (!success)
-            Debug.LogError("LevelGenerator: all generation attempts failed.");
     }
 
     /// <summary>
