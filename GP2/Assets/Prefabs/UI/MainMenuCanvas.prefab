@@ -748,7 +748,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 0.5}
   m_AnchorMax: {x: 1, y: 0.5}
   m_AnchoredPosition: {x: 0, y: -64.368774}
-  m_SizeDelta: {x: 430, y: 463.1677}
+  m_SizeDelta: {x: 0, y: 463.1677}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &1565478293691111259
 CanvasRenderer:
@@ -778,12 +778,19 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: 'Lorem ipsum decorum est...
+  m_text: 'LMB - Select
+
+    RMB (HOLD) - Rotate Camera
+
+    WASD - Move Camera
+
+    Q
+    - Deselect Agent
 
 '
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 72f7c0deb240abe47a1095c9b2cfa308, type: 2}
-  m_sharedMaterial: {fileID: -4985138805710002643, guid: 72f7c0deb240abe47a1095c9b2cfa308,
+  m_fontAsset: {fileID: 11400000, guid: 91d286a72f91a9349ac4995201458d6a, type: 2}
+  m_sharedMaterial: {fileID: -8852227654681211144, guid: 91d286a72f91a9349ac4995201458d6a,
     type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
@@ -815,7 +822,7 @@ MonoBehaviour:
   m_fontSizeMin: 18
   m_fontSizeMax: 72
   m_fontStyle: 8
-  m_HorizontalAlignment: 2
+  m_HorizontalAlignment: 1
   m_VerticalAlignment: 512
   m_textAlignment: 65535
   m_characterSpacing: 0
@@ -3057,12 +3064,14 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: 'Lorem ipsum decorum est...
-
-'
+  m_text: "Take command of a team of robo-agents in this fast-paced simulation: mine
+    and refine ore, repair critical systems, and keep your facility fueled and running.
+    Every level is procedurally generated, turning each playthrough into a fresh
+    strategic puzzle\u2014will you optimize your workflow or watch your machines
+    grind to a halt? Master the art of resource management and real-time decision-making"
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 72f7c0deb240abe47a1095c9b2cfa308, type: 2}
-  m_sharedMaterial: {fileID: -4985138805710002643, guid: 72f7c0deb240abe47a1095c9b2cfa308,
+  m_fontAsset: {fileID: 11400000, guid: 91d286a72f91a9349ac4995201458d6a, type: 2}
+  m_sharedMaterial: {fileID: -8852227654681211144, guid: 91d286a72f91a9349ac4995201458d6a,
     type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}

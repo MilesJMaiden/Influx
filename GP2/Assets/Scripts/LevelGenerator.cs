@@ -26,16 +26,17 @@ public class LevelGenerator : MonoBehaviour
     [Header("Layout Settings")]
     // The gap (in world units) between rooms – filled by corridor rooms.
     public float corridorWidth = 5f;
-
-    // Constant: world units per tile.
+    //World units per tile.
     public const float TileSize = 5f;
-
     // List of generated room data.
     private List<RoomData> rooms;
-
     // For centering rooms in grid cells.
     private Dictionary<int, float> columnWidths;
     private Dictionary<int, float> rowHeights;
+
+    [Header("Alert Settings")]
+    [SerializeField] private GameObject redAlertRoomLight;
+    [SerializeField] AudioClip alertClip;
 
     [Header("Variant Selection UI")]
     [SerializeField] private Canvas variantSelectionCanvas;
@@ -87,6 +88,8 @@ public class LevelGenerator : MonoBehaviour
     /// 1) Wherever you call spawner.SpawnObjects(), capture its bool return.
     /// 2) If any call returns false, immediately return false (to trigger a retry).
     /// 3) At the end, return true.
+    /// Additionally, this version sets up one "red alert" light per room (disabled by default)
+    /// and hooks up a RoomAlertController to blink it whenever *all* that room's computers read 0.
     /// </summary>
     private bool BuildLevel()
     {
@@ -137,17 +140,17 @@ public class LevelGenerator : MonoBehaviour
 
             // object spawner
             var spawnSettings = designSettings.roomSpawnSettings[i];
-            var containerPool = new ObjectPool(containerPrefab, roomGO.transform, 10);
-            var computerPool = new ObjectPool(computerPrefab, roomGO.transform, 10);
+            var containerPool2 = new ObjectPool(containerPrefab, roomGO.transform, 10);
+            var computerPool2 = new ObjectPool(computerPrefab, roomGO.transform, 10);
             var spawner = new RoomObjectSpawner(
-                                        (int)room.dimensions.x,
-                                        (int)room.dimensions.y,
-                                        spawnSettings,
-                                        containerPool,
-                                        computerPool,
-                                        dispPool,
-                                        roomGO.transform
-                                      );
+                (int)room.dimensions.x,
+                (int)room.dimensions.y,
+                spawnSettings,
+                containerPool2,
+                computerPool2,
+                dispPool,
+                roomGO.transform
+            );
             if (!spawner.SpawnObjects())
                 return false;  // abort on any failure
 
@@ -165,8 +168,47 @@ public class LevelGenerator : MonoBehaviour
             };
             var poses = new Vector3[] { bl, br, tl, tr };
             for (int j = 0; j < 4; j++)
-                Instantiate(cornerWallPrefab, roomGO.transform.TransformPoint(poses[j]), rots[j], roomGO.transform);
+                Instantiate(cornerWallPrefab,
+                            roomGO.transform.TransformPoint(poses[j]),
+                            rots[j],
+                            roomGO.transform);
 
+            // --- RED ALERT LIGHT SETUP ---
+            // 1) Instantiate & size to floor footprint
+            float roomWidthWorld = w;
+            float roomHeightWorld = h;
+            // offset X/Z by -2.5, lift to y = 0.1
+            Vector3 localCenter = new Vector3(
+                roomWidthWorld / 2f - 2.5f,
+                0.1f,
+                roomHeightWorld / 2f - 2.5f
+            );
+            var alertGO = Instantiate(
+                redAlertRoomLight,
+                roomGO.transform.TransformPoint(localCenter),
+                Quaternion.identity,
+                roomGO.transform
+            );
+            // match floor X/Z, stretch Y to 10
+            alertGO.transform.localScale = new Vector3(
+                roomWidthWorld,
+                10f,
+                roomHeightWorld
+            );
+            alertGO.SetActive(false);
+
+
+            // 2) Collect this room’s computer sliders
+            var sliders = roomGO.GetComponentsInChildren<Computer>()
+                                .Select(c => c.GetComponentInChildren<Slider>())
+                                .Where(s => s != null)
+                                .ToList();
+
+            // 3) Attach & initialize controller
+            var controller = roomGO.AddComponent<RoomAlertController>();
+            controller.Initialize(alertGO, sliders, alertClip);
+
+            // end per‐room
             agentRoomData.Add((roomGO.transform, room.dimensions, spawnSettings));
         }
 
@@ -184,7 +226,6 @@ public class LevelGenerator : MonoBehaviour
 
         return true;
     }
-
 
     /// <summary>
     /// Computes a bounding box that encapsulates all Renderers in the children of the given root.

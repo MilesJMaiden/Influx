@@ -63,11 +63,9 @@ public class Computer : Interactable
                 _slider.value = 0f;
                 Debug.Log($"{name} has depleted");
             }
-            else
-            {
-                // 3) Reset instantly to full
-                _slider.value = 1f;
-            }
+
+            // **Removed the else-reset-to-full branch** so the slider only ever goes down here.
+            // Any increase now happens only via NotifyRepairEnd() / agent repairs.
         }
     }
 
@@ -90,6 +88,8 @@ public class Computer : Interactable
         if (!IsUnderRepair) return;
 
         IsUnderRepair = false;
+        // restore health back to 1.0f
+        _slider.value = 1f;
         if (_depletionCoroutine == null)
             _depletionCoroutine = StartCoroutine(DepletionRoutine());
     }

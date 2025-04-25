@@ -51,6 +51,9 @@ public class Agent : MonoBehaviour
     private GameObject selectedIndicator, highlightIndicator;
     private Coroutine refineRoutine;
 
+    private GameObject _refinedRockObject;
+
+
     private void Awake()
     {
         navAgent = GetComponent<NavMeshAgent>();
@@ -60,18 +63,16 @@ public class Agent : MonoBehaviour
         selectedIndicator?.SetActive(false);
         highlightIndicator?.SetActive(false);
 
-        // Initialize own fuel slider
-        if (fuelSlider)
-        {
-            fuelSlider.minValue = 0f;
-            fuelSlider.maxValue = 1f;
-            fuelSlider.value = 1f;
-        }
+        // cache refined‐rock child and hide it
+        _refinedRockObject = transform.Find("RefinedRock")?.gameObject;
+        if (_refinedRockObject != null)
+            _refinedRockObject.SetActive(false);
 
+        // Initialize own fuel slider...
         // Hide rock visuals
         transform.Find("Rock")?.gameObject.SetActive(false);
-        transform.Find("RefinedRock")?.gameObject.SetActive(false);
     }
+
 
     private void Start()
     {
@@ -267,22 +268,19 @@ public class Agent : MonoBehaviour
                             tableSlider.value = 0f;
                             tableSlider.gameObject.SetActive(true);
 
-                            // if selected, go idle
-                            if (SelectedAgent == this)
-                            {
-                                TransitionTo(AgentState.Idle);
-                            }
-                            else
-                            {
-                                // begin refining
-                                currentState = AgentState.RefineRock;
-                                refineRoutine = StartCoroutine(RefineCoroutine(tableSlider, table));
-                            }
+                            // **always** begin refining
+                            currentState = AgentState.RefineRock;
+                            if (refineRoutine != null) StopCoroutine(refineRoutine);
+                            refineRoutine = StartCoroutine(RefineCoroutine(tableSlider, table));
                         }
-                        else Debug.LogWarning("Agent: Table has no Slider to refine rock.");
+                        else
+                        {
+                            Debug.LogWarning("Agent: Table has no Slider to refine rock.");
+                        }
                     }
                     break;
                 }
+
 
             case AgentState.MoveToBin:
                 {
@@ -316,10 +314,11 @@ public class Agent : MonoBehaviour
         navAgent.SetDestination(bin.transform.position);
     }
 
-    // replace your old RefineCoroutine(...) with this signature & body:
     private IEnumerator RefineCoroutine(Slider tableSlider, Table table)
     {
-        float elapsed = 0f, duration = 4f;
+        float elapsed = 0f;
+        const float duration = 4f;
+
         while (elapsed < duration)
         {
             elapsed += Time.deltaTime;
@@ -327,11 +326,13 @@ public class Agent : MonoBehaviour
             yield return null;
         }
 
-        // finish refining
+        // hide the table’s UI & its rock model
         tableSlider.gameObject.SetActive(false);
         table.transform.Find("Rock")?.gameObject.SetActive(false);
 
-        transform.Find("RefinedRock")?.gameObject.SetActive(true);
+        // enable the agent’s RefinedRock child
+        if (_refinedRockObject != null)
+            _refinedRockObject.SetActive(true);
         IsCarryingRefined = true;
 
         // now head back to bin
@@ -340,6 +341,7 @@ public class Agent : MonoBehaviour
         if (bin != null)
             navAgent.SetDestination(bin.transform.position);
     }
+
 
     // —— Mouse Hover & Cursor ——
 
@@ -399,6 +401,7 @@ public class Agent : MonoBehaviour
 
     // —— Player Input when Selected ——
 
+    // —— Player Input when Selected ——
     private void HandleUserInput()
     {
         if (Input.GetKeyDown(KeyCode.Q))
@@ -412,23 +415,30 @@ public class Agent : MonoBehaviour
             var ray = Camera.main.ScreenPointToRay(Input.mousePosition);
             if (Physics.Raycast(ray, out var hit, 100f))
             {
+                // floor click
                 if (hit.collider.CompareTag("Floor"))
                 {
                     navAgent.SetDestination(hit.point);
                     repairTarget = null;
                 }
+                // computer click
                 else if (hit.collider.GetComponentInParent<Computer>() is Computer c)
                 {
                     CommandRepair(c);
                 }
+                // rock-bin click
                 else if (hit.collider.GetComponentInParent<RockBin>() is RockBin rb)
                 {
                     CommandPickupRock(rb);
                 }
+                // table click
                 else if (hit.collider.GetComponentInParent<Table>() is Table tbl)
                 {
-                    CommandDeliverToTable(tbl);
+                    // only navigate to table if we're carrying an unrefined rock
+                    if (IsCarryingRock && !IsCarryingRefined)
+                        CommandDeliverToTable(tbl);
                 }
+                // bin click
                 else if (hit.collider.GetComponentInParent<Bin>() is Bin bin)
                 {
                     CommandDeposit(bin);
@@ -437,10 +447,13 @@ public class Agent : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Route via MoveToTable state so Table logic will run on arrival.
+    /// </summary>
     public void CommandDeliverToTable(Table t)
     {
-        // route via MoveToTable state so Table logic will run
-        CommandPickupRock(FindObjectOfType<RockBin>()); // dummy, will be overridden when pipeline runs
+        currentState = AgentState.MoveToTable;
+        navAgent.SetDestination(t.transform.position);
     }
 
     // —— FSM Helpers ——
