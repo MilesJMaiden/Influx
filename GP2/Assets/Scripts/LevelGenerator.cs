@@ -37,6 +37,7 @@ public class LevelGenerator : MonoBehaviour
     [Header("Alert Settings")]
     [SerializeField] private GameObject redAlertRoomLight;
     [SerializeField] AudioClip alertClip;
+    [SerializeField] private GameObject alienPrefab;
 
     [Header("Variant Selection UI")]
     [SerializeField] private Canvas variantSelectionCanvas;
@@ -206,7 +207,8 @@ public class LevelGenerator : MonoBehaviour
 
             // 3) Attach & initialize controller
             var controller = roomGO.AddComponent<RoomAlertController>();
-            controller.Initialize(alertGO, sliders, alertClip);
+            controller.Initialize(alertGO, sliders, alertClip, alienPrefab);
+
 
             // end per‐room
             agentRoomData.Add((roomGO.transform, room.dimensions, spawnSettings));

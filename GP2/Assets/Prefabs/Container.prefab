@@ -221,6 +221,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 841014604640ce046b17dbeddd5073b9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  alienSpawnPoint: {fileID: 3650865032023285779}
 --- !u!1 &3529761986895904994
 GameObject:
   m_ObjectHideFlags: 0

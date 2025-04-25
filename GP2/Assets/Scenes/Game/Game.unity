@@ -2017,6 +2017,8 @@ MonoBehaviour:
   redAlertRoomLight: {fileID: 8053984169055343985, guid: 4ce792f2f36feac4a89f3f9a72a2f653,
     type: 3}
   alertClip: {fileID: 8300000, guid: 4c2695f2c9ec9034daa74fbb54175f78, type: 3}
+  alienPrefab: {fileID: 55084357250127174, guid: 8807fd9b1e9fa4b41a9244ef9e555596,
+    type: 3}
   variantSelectionCanvas: {fileID: 8062336946521772230}
   variantButtons:
   - {fileID: 3230969208973839625}
