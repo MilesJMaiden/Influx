@@ -12,6 +12,9 @@ public class PauseManager : MonoBehaviour
     [Header("Variant Selection UI (disable Pause while this is up)")]
     [SerializeField] private Canvas variantSelectionCanvas;
 
+    [Header("HUD Canvas (will be hidden when paused)")]
+    [SerializeField] private Canvas hudCanvas;
+
     [Header("Audio")]
     [Tooltip("The one-shot selection sound to play on any button press")]
     [SerializeField] private AudioClip selectionSfx;
@@ -25,16 +28,19 @@ public class PauseManager : MonoBehaviour
         if (audioSource == null)
             Debug.LogWarning("PauseManager: no AudioSource assigned! Selection SFX won't play.");
 
-        // Make sure Pause is hidden at start
+        // Hide pause menu at start
         pauseMenuCanvas.gameObject.SetActive(false);
+    }
 
+    private void Start()
+    {
         continueButton.onClick.AddListener(OnContinuePressed);
         quitButton.onClick.AddListener(OnQuitPressed);
     }
 
     private void Update()
     {
-        // Never open Pause if the variant‐selection screen is active
+        // Never open Pause if the variant-selection screen is active
         if (variantSelectionCanvas != null && variantSelectionCanvas.gameObject.activeSelf)
             return;
 
@@ -45,7 +51,15 @@ public class PauseManager : MonoBehaviour
     private void TogglePause()
     {
         isPaused = !isPaused;
+
+        // show/hide pause menu
         pauseMenuCanvas.gameObject.SetActive(isPaused);
+
+        // hide your HUD when paused, show it when unpaused
+        if (hudCanvas != null)
+            hudCanvas.gameObject.SetActive(!isPaused);
+
+        // actually pause/unpause time
         Time.timeScale = isPaused ? 0f : 1f;
     }
 
@@ -63,7 +77,7 @@ public class PauseManager : MonoBehaviour
         if (audioSource && selectionSfx)
             audioSource.PlayOneShot(selectionSfx);
 
-        // un-pause before changing scene
+        // reset time before leaving
         Time.timeScale = 1f;
         SceneManager.LoadScene("MainMenu");
     }
