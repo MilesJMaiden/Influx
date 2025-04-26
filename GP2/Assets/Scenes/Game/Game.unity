@@ -222,20 +222,20 @@ MonoBehaviour:
   spawnObjects:
   - prefab: {fileID: 4981465833101094494, guid: be68670cb087c6b4ca0423ba07a4e922,
       type: 3}
-    quantity: 120
+    quantity: 240
   - prefab: {fileID: 779049623770926028, guid: d2a24167bd0030d46b51ddfe93b2e04f, type: 3}
-    quantity: 20
+    quantity: 40
   - prefab: {fileID: 6411546778126608278, guid: 77a32fdb628629948881bf422290dedf,
       type: 3}
-    quantity: 20
+    quantity: 40
   - prefab: {fileID: 1937112646373166181, guid: e88e60e728f7e0d4fb1d3a693edfac1c,
       type: 3}
-    quantity: 20
-  gridSize: {x: 250, y: 250}
+    quantity: 40
+  gridSize: {x: 400, y: 400}
   yPosition: -25
   minDistance: 2
   minScale: 0.1
-  maxScale: 1
+  maxScale: 1.5
 --- !u!4 &6592425
 Transform:
   m_ObjectHideFlags: 0
@@ -1746,54 +1746,6 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: -20, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
---- !u!1 &443400112
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 443400114}
-  - component: {fileID: 443400113}
-  m_Layer: 0
-  m_Name: GameOverManager
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &443400113
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 443400112}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 01872369464e70a42a1d447654bd7b25, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  retryButton: {fileID: 1587290002}
-  quitButton: {fileID: 1584065065}
-  audioSource: {fileID: 1722783639}
-  selectionSfx: {fileID: 8300000, guid: f8b1720507c9f4c43bff4bb61757cf80, type: 3}
---- !u!4 &443400114
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 443400112}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &471402630
 GameObject:
   m_ObjectHideFlags: 0
@@ -2859,6 +2811,60 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0, y: 0}
+--- !u!1 &768671920
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 768671922}
+  - component: {fileID: 768671921}
+  m_Layer: 0
+  m_Name: UIManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &768671921
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 768671920}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dbff26bcd8446b740ae027a85b316a64, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  variantSelectionCanvas: {fileID: 8062336946521772230}
+  hudCanvas: {fileID: 1729489051}
+  pauseMenuCanvas: {fileID: 206263180}
+  gameOverCanvas: {fileID: 1684412842}
+  continueButton: {fileID: 163712215}
+  pauseQuitButton: {fileID: 1071495436}
+  retryButton: {fileID: 1587290002}
+  gameOverQuitButton: {fileID: 1584065065}
+  audioSource: {fileID: 1722783639}
+  selectionSfx: {fileID: 8300000, guid: f8b1720507c9f4c43bff4bb61757cf80, type: 3}
+--- !u!4 &768671922
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 768671920}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &851426937
 GameObject:
   m_ObjectHideFlags: 0
@@ -4469,57 +4475,6 @@ RectTransform:
   m_AnchoredPosition: {x: 62, y: -17.4338}
   m_SizeDelta: {x: 1819.5054, y: 509.9152}
   m_Pivot: {x: 0.5, y: 0.5}
---- !u!1 &1408258903
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1408258905}
-  - component: {fileID: 1408258904}
-  m_Layer: 0
-  m_Name: PauseManager
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &1408258904
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1408258903}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 994d510f5e05b0a4e81e0db060b919a1, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  pauseMenuCanvas: {fileID: 206263180}
-  continueButton: {fileID: 163712215}
-  quitButton: {fileID: 1071495436}
-  variantSelectionCanvas: {fileID: 8062336946521772230}
-  hudCanvas: {fileID: 1729489051}
-  selectionSfx: {fileID: 8300000, guid: f8b1720507c9f4c43bff4bb61757cf80, type: 3}
-  audioSource: {fileID: 1722783639}
---- !u!4 &1408258905
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1408258903}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1460918703
 GameObject:
   m_ObjectHideFlags: 0
@@ -8072,12 +8027,11 @@ SceneRoots:
   m_Roots:
   - {fileID: 1722783640}
   - {fileID: 654758348}
+  - {fileID: 1211058840}
+  - {fileID: 768671922}
   - {fileID: 1729489052}
   - {fileID: 8177368686274613092}
-  - {fileID: 1211058840}
-  - {fileID: 1408258905}
   - {fileID: 206263181}
-  - {fileID: 443400114}
   - {fileID: 1684412843}
   - {fileID: 1123725554}
   - {fileID: 351317872}
