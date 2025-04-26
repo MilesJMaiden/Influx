@@ -44,12 +44,18 @@ public class LevelGenerator : MonoBehaviour
     [SerializeField] private Button[] variantButtons = new Button[3];
     [SerializeField] private LevelDesignSettings[] designVariants = new LevelDesignSettings[3];
 
+    [Header("HUD")]
+    [SerializeField] private Canvas hudCanvas;
+
     [Header("Audio")]
     [SerializeField] private AudioSource sfxSource;
     [SerializeField] private AudioClip selectClip;
 
     private void Start()
     {
+        // hide it initially
+        hudCanvas.gameObject.SetActive(false);
+
         variantSelectionCanvas.gameObject.SetActive(true);
 
         for (int i = 0; i < variantButtons.Length; i++)
@@ -69,6 +75,9 @@ public class LevelGenerator : MonoBehaviour
         // now hide UI & set the chosen settings
         designSettings = designVariants[variantIndex];
         variantSelectionCanvas.gameObject.SetActive(false);
+
+        // show the HUD now that we’re “in game”
+        hudCanvas.gameObject.SetActive(true);
 
         bool success = false;
         while (!success)

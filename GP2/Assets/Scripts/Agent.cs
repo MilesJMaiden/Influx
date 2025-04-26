@@ -100,7 +100,7 @@ public class Agent : MonoBehaviour
         }
 
         // 2) Fuel depletion
-        if (fuelSlider)
+        if (fuelSlider != null)
             fuelSlider.value = Mathf.Max(0f, fuelSlider.value - fuelDepleteRate * Time.deltaTime);
 
         // 3) Player override: only in Idle or Wander
@@ -111,87 +111,32 @@ public class Agent : MonoBehaviour
             return;
         }
 
-        // 4) Repair pipeline
-        if (currentState == AgentState.MoveToComputer || currentState == AgentState.Repair)
-        {
-            RepairBehavior();
-            return;
-        }
-
-        // 5) ALIEN HUNTING / TRAPPING (highest auto priority)
-        //    Only if NOT carrying rock or refined rock, and not already in the rock pipeline
-        if (!IsCarryingRock && !IsCarryingRefined)
-        {
-            var aliens = FindObjectsOfType<AlienController>()
-                         .Select(a => a.gameObject)
-                         .ToList();
-            if (aliens.Any())
-            {
-                currentState = AgentState.ChaseAlien;
-                var nearest = aliens
-                    .OrderBy(a => Vector3.Distance(transform.position, a.transform.position))
-                    .First();
-                navAgent.SetDestination(nearest.transform.position);
-
-                // if we’re within 2 units, capture it
-                if (!navAgent.pathPending &&
-                    Vector3.Distance(transform.position, nearest.transform.position) <= 2f)
-                {
-                    Destroy(nearest);
-                    isCarryingAlien = true;
-                    if (_alienVisual != null) _alienVisual.SetActive(true);
-
-                    // immediately switch to trap behavior
-                    var containers = FindObjectsOfType<Container>()
-                        .Where(c => c.alienSpawnPoint != null)
-                        .ToList();
-                    if (containers.Any())
-                    {
-                        currentState = AgentState.TrapAlien;
-                        var dropTarget = containers
-                            .OrderBy(c => Vector3.Distance(
-                                transform.position,
-                                c.alienSpawnPoint.transform.position))
-                            .First();
-                        navAgent.SetDestination(
-                            dropTarget.alienSpawnPoint.transform.position);
-                    }
-                }
-                return;
-            }
-        }
-
-        else if (isCarryingAlien)
+        // 4) TRAP ALIEN (highest auto priority when holding one)
+        if (isCarryingAlien)
         {
             currentState = AgentState.TrapAlien;
-
-            // find all valid drop‐off containers
             var containers = FindObjectsOfType<Container>()
                 .Where(c => c.alienSpawnPoint != null)
                 .ToList();
 
             if (containers.Any())
             {
-                // pick closest spawn point
                 var nearest = containers
                     .OrderBy(c => Vector3.Distance(
                         transform.position,
                         c.alienSpawnPoint.transform.position))
                     .First();
-
-                var dropPos = nearest.alienSpawnPoint.transform.position;
+                Vector3 dropPos = nearest.alienSpawnPoint.transform.position;
                 navAgent.SetDestination(dropPos);
 
-                // **use a hard-coded 2f radius** instead of stoppingDistance
+                // within 2 units? drop it
                 if (!navAgent.pathPending &&
                     Vector3.Distance(transform.position, dropPos) <= 2f)
                 {
-                    // drop the alien
                     isCarryingAlien = false;
-                    if (_alienVisual != null)
-                        _alienVisual.SetActive(false);
+                    if (_alienVisual != null) _alienVisual.SetActive(false);
 
-                    // if there are more aliens, resume chase, else go idle
+                    // still more aliens?
                     if (FindObjectsOfType<AlienController>().Any())
                         currentState = AgentState.ChaseAlien;
                     else
@@ -201,7 +146,64 @@ public class Agent : MonoBehaviour
             return;
         }
 
-        // 5) If world‐bin low (<50%), do refuel pipeline first
+        // 5) Rock→Table→Bin pipeline (if in pipeline, always finish this first)
+        if (currentState == AgentState.MoveToRockBin
+            || currentState == AgentState.MoveToTable
+            || currentState == AgentState.RefineRock
+            || currentState == AgentState.MoveToBin)
+        {
+            RockPipelineBehavior();
+            return;
+        }
+
+        // 6) CHASE ALIEN (only if not carrying rock/refined) and only within 30 units
+        if (!IsCarryingRock && !IsCarryingRefined)
+        {
+            var aliens = FindObjectsOfType<AlienController>()
+                         .Select(a => a.gameObject)
+                         .ToList();
+            if (aliens.Any())
+            {
+                // find nearest alien
+                var nearest = aliens
+                    .OrderBy(a => Vector3.Distance(transform.position, a.transform.position))
+                    .First();
+                float distToAlien = Vector3.Distance(transform.position, nearest.transform.position);
+
+                // only chase if within 30 units
+                if (distToAlien <= 30f)
+                {
+                    currentState = AgentState.ChaseAlien;
+                    navAgent.SetDestination(nearest.transform.position);
+
+                    // within 2 units? capture!
+                    if (!navAgent.pathPending && distToAlien <= 2f)
+                    {
+                        Destroy(nearest);
+                        isCarryingAlien = true;
+                        if (_alienVisual != null) _alienVisual.SetActive(true);
+
+                        // immediately switch to trapping
+                        var containers = FindObjectsOfType<Container>()
+                            .Where(c => c.alienSpawnPoint != null)
+                            .ToList();
+                        if (containers.Any())
+                        {
+                            currentState = AgentState.TrapAlien;
+                            var dropTarget = containers
+                                .OrderBy(c => Vector3.Distance(
+                                    transform.position,
+                                    c.alienSpawnPoint.transform.position))
+                                .First();
+                            navAgent.SetDestination(dropTarget.alienSpawnPoint.transform.position);
+                        }
+                    }
+                    return;
+                }
+            }
+        }
+
+        // 7) If world-bin low (<50%), do global refuel pipeline first
         var globalBin = FindObjectOfType<Bin>();
         if (globalBin != null)
         {
@@ -221,32 +223,21 @@ public class Agent : MonoBehaviour
             }
         }
 
-        // 6) Repair pipeline
-        if (currentState == AgentState.MoveToComputer
-            || currentState == AgentState.Repair)
+        // 8) Repair pipeline
+        if (currentState == AgentState.MoveToComputer || currentState == AgentState.Repair)
         {
             RepairBehavior();
             return;
         }
 
-        // 7) Rock→Table→Bin pipeline
-        if (currentState == AgentState.MoveToRockBin
-            || currentState == AgentState.MoveToTable
-            || currentState == AgentState.RefineRock
-            || currentState == AgentState.MoveToBin)
-        {
-            RockPipelineBehavior();
-            return;
-        }
-
-        // 8) Auto‐repair
+        // 9) Auto-repair
         if (repairTarget == null)
             TryAutoRepair();
         if (repairTarget != null)
             return;
 
-        // 9) Auto‐refuel
-        bool needFuel = fuelSlider && fuelSlider.value < 0.75f;
+        // 10) Auto-refuel fallback
+        bool needFuel = fuelSlider != null && fuelSlider.value < 0.75f;
         if (needFuel
             && !IsCarryingRock
             && !IsCarryingRefined
@@ -260,7 +251,7 @@ public class Agent : MonoBehaviour
             }
         }
 
-        // 10) Normal FSM
+        // 11) Normal idle/wander FSM
         stateTimer -= Time.deltaTime;
         if (currentState == AgentState.Idle && stateTimer <= 0f)
             TransitionTo(AgentState.Wander);

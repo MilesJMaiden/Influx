@@ -16,6 +16,7 @@ public class RoomAlertController : MonoBehaviour
     AudioClip _alertClip;
     GameObject _alienPrefab;
 
+    // track which containers we've already spawned for
     HashSet<Container> _spawned = new HashSet<Container>();
 
     public void Initialize(
@@ -46,9 +47,11 @@ public class RoomAlertController : MonoBehaviour
         if (_computerSliders == null || !_computerSliders.Any(s => s != null))
             return;
 
-        bool allZero = _computerSliders.Where(s => s != null)
-                                      .All(s => s.value <= 0f);
+        bool allZero = _computerSliders
+            .Where(s => s != null)
+            .All(s => s.value <= 0f);
 
+        // alert starts
         if (allZero && !_alertLight.activeSelf)
         {
             // 1) enable visuals & audio
@@ -64,21 +67,19 @@ public class RoomAlertController : MonoBehaviour
             // 2) spawn one alien per Container
             foreach (var container in GetComponentsInChildren<Container>())
             {
-                // container.Auto-found its alienSpawnPoint in Awake()
                 if (!_spawned.Contains(container) &&
                     container.alienSpawnPoint != null)
                 {
                     var pos = container.alienSpawnPoint.transform.position;
                     var alien = Instantiate(_alienPrefab, pos, Quaternion.identity);
-                    // optionally parent it under the room for organization:
                     alien.transform.SetParent(transform, true);
                     _spawned.Add(container);
                 }
             }
         }
+        // alert ends
         else if (!allZero && _alertLight.activeSelf)
         {
-            // shutdown
             _alertLight.SetActive(false);
             if (_flashRoutine != null) StopCoroutine(_flashRoutine);
 
@@ -87,6 +88,9 @@ public class RoomAlertController : MonoBehaviour
                 _audioSource.Stop();
                 _audioSource.loop = false;
             }
+
+            // clear so next alert respawns at all containers
+            _spawned.Clear();
         }
     }
 
