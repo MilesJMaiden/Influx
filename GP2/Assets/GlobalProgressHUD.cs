@@ -5,28 +5,35 @@ using UnityEngine.UI;
 [RequireComponent(typeof(Canvas))]
 public class GlobalProgressHUD : MonoBehaviour
 {
+    [Header("Per-Category Sliders")]
     public Slider computersSlider;
     public Slider binsSlider;
     public Slider allSlider;
+
+    [Header("Game-Over UI")]
+    [SerializeField] private Canvas gameOverCanvas;
 
     Canvas _canvas;
 
     void Awake()
     {
         _canvas = GetComponent<Canvas>();
-        // start off hidden until LevelGenerator turns us on
         _canvas.enabled = false;
+
+        if (gameOverCanvas != null)
+            gameOverCanvas.enabled = false;
+        else
+            Debug.LogWarning("GlobalProgressHUD: no GameOver Canvas assigned!");
     }
 
     void OnEnable()
     {
-        // whenever LevelGenerator shows us, also ensure the Canvas component is on
         _canvas.enabled = true;
     }
 
     void Update()
     {
-        // if the game is paused, hide the HUD entirely
+        // hide HUD if paused
         if (Time.timeScale == 0f)
         {
             _canvas.enabled = false;
@@ -34,11 +41,10 @@ public class GlobalProgressHUD : MonoBehaviour
         }
         else if (!_canvas.enabled)
         {
-            // if unpaused *and* we had been shown by LevelGenerator, re-enable
             _canvas.enabled = true;
         }
 
-        // — your existing slider‐averaging logic —
+        // 1) recompute averages
         var comp = FindObjectsOfType<Computer>()
                     .Select(c => c.GetComponentInChildren<Slider>())
                     .Where(s => s != null)
@@ -55,5 +61,19 @@ public class GlobalProgressHUD : MonoBehaviour
                   .Where(s => s != computersSlider && s != binsSlider && s != allSlider)
                   .ToArray();
         allSlider.value = all.Any() ? all.Average(s => s.value) : 0f;
+
+        // 2) check for game-over
+        if (allSlider.value <= 0f)
+        {
+            // pause game
+            Time.timeScale = 0f;
+
+            // show game-over
+            if (gameOverCanvas != null)
+                gameOverCanvas.enabled = true;
+
+            // ensure HUD is hidden
+            _canvas.enabled = false;
+        }
     }
 }

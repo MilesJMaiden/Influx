@@ -54,7 +54,7 @@ public class Bin : Interactable
     }
 
     /// <summary>
-    /// Begin sabotage: overrides normal depletion and drains at 0.2/sec.
+    /// Begin sabotage: overrides normal depletion and drains at 0.25/sec.
     /// </summary>
     public void StartSabotage()
     {
@@ -84,7 +84,7 @@ public class Bin : Interactable
 
     private IEnumerator SabotageRoutine()
     {
-        const float rate = 0.2f; // per second
+        const float rate = 0.25f; // per second
         while (_isSabotaged && this.enabled)
         {
             _currentFuel = Mathf.Max(0f, _currentFuel - rate * Time.deltaTime);

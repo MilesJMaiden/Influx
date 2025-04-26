@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿// Computer.cs
+using UnityEngine;
 using UnityEngine.UI;
 using System.Collections;
 
@@ -123,7 +124,7 @@ public class Computer : Interactable
     }
 
     /// <summary>
-    /// Begin sabotage: overrides all other behaviors and drains at 0.2/sec.
+    /// Begin sabotage: overrides all other behaviors and drains at 0.25/sec.
     /// </summary>
     public void StartSabotage()
     {
@@ -159,7 +160,7 @@ public class Computer : Interactable
 
     private IEnumerator SabotageRoutine()
     {
-        const float rate = 0.2f; // per second
+        const float rate = 0.25f; // per second
         while (_isSabotaged && this.enabled)
         {
             _slider.value = Mathf.Max(0f, _slider.value - rate * Time.deltaTime);
