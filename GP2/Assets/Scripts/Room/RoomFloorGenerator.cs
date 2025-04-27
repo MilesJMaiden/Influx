@@ -6,8 +6,8 @@ public class RoomFloorGenerator
 {
     private GameObject floorPlanePrefab;
     private Transform parent;
-    private float roomWidth;  // in world units
-    private float roomHeight; // in world units
+    private float roomWidth;
+    private float roomHeight;
 
     /// <summary>
     /// Constructor for generating a floor plane.

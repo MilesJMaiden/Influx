@@ -8,8 +8,6 @@ public class RoomGenerator : IRoomGenerator
     private readonly ObjectPool floorPool;
     private readonly ObjectPool wallPool;
     private readonly ObjectPool windowWallPool;
-    private readonly ObjectPool doorPool;
-    private readonly ObjectPool wallDisplayPool;
     private readonly Dictionary<Vector2Int, GameObject> spawnedTiles;
     private readonly HashSet<Vector3> windowWallPositions = new();
 
@@ -34,8 +32,6 @@ public class RoomGenerator : IRoomGenerator
         this.floorPool = floorPool;
         this.wallPool = wallPool;
         this.windowWallPool = windowWallPool;
-        this.doorPool = doorPool;
-        this.wallDisplayPool = wallDisplayPool;
         this.connections = connections;
         spawnedTiles = new Dictionary<Vector2Int, GameObject>();
     }

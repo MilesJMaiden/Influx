@@ -1,4 +1,3 @@
-// Container.cs
 using UnityEngine;
 
 public class Container : Interactable

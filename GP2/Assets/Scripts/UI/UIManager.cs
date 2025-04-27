@@ -26,12 +26,10 @@ public class UIManager : MonoBehaviour
 
     void Awake()
     {
-        // Hide all but variant-selection
         hudCanvas.gameObject.SetActive(false);
         pauseMenuCanvas.gameObject.SetActive(false);
         gameOverCanvas.gameObject.SetActive(false);
 
-        // Wire up buttons
         continueButton.onClick.AddListener(TogglePause);
         pauseQuitButton.onClick.AddListener(QuitToMainMenu);
         retryButton.onClick.AddListener(RetryGame);
@@ -40,7 +38,6 @@ public class UIManager : MonoBehaviour
 
     void Update()
     {
-        // Don't allow pause during variant selection
         if (variantSelectionCanvas.gameObject.activeSelf) return;
 
         if (Input.GetKeyDown(KeyCode.Escape))
@@ -49,7 +46,6 @@ public class UIManager : MonoBehaviour
 
     public void OnGameStart()
     {
-        // Call this once the variantSelectionCanvas has been dismissed
         hudCanvas.gameObject.SetActive(true);
     }
 
@@ -79,7 +75,6 @@ public class UIManager : MonoBehaviour
 
     public void ShowGameOver()
     {
-        // e.g. called when allSlider hits zero
         Time.timeScale = 0f;
         gameOverCanvas.gameObject.SetActive(true);
         hudCanvas.gameObject.SetActive(false);

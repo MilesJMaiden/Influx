@@ -6,11 +6,11 @@ public class CameraManager : MonoBehaviour
     public static CameraManager Instance { get; private set; }
 
     [Header("Camera Assignment")]
-    [Tooltip("Assign the camera to control. If left unassigned, Camera.main (tagged 'MainCamera') will be used.")]
+    [Tooltip("Assign the camera to control.")]
     public Camera assignedCamera;
 
     [Header("Level Root")]
-    [Tooltip("Assign the root GameObject of your generated environment (for example, your 'GameManager').")]
+    [Tooltip("Assign the root GameObject of your generated environment.")]
     public GameObject levelRoot;
 
     [Header("Movement Settings")]

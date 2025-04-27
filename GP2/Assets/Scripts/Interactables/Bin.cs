@@ -1,5 +1,4 @@
-﻿// Bin.cs
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.UI;
 using System.Collections;
 
@@ -45,7 +44,9 @@ public class Bin : Interactable
         }
     }
 
-    /// <summary>Called by an Agent when depositing refined rock.</summary>
+    /// <summary>
+    /// Called by an Agent when depositing refined rock.
+    /// </summary>
     public void AddFuel(float amount)
     {
         _currentFuel = Mathf.Clamp01(_currentFuel + amount);
@@ -68,7 +69,9 @@ public class Bin : Interactable
         _sabotageCoroutine = StartCoroutine(SabotageRoutine());
     }
 
-    /// <summary>End sabotage and resume normal behavior.</summary>
+    /// <summary>
+    /// End sabotage and resume normal behavior.
+    /// </summary>
     public void StopSabotage()
     {
         if (!_isSabotaged) return;

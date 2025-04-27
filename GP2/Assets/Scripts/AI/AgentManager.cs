@@ -15,7 +15,6 @@ public class AgentManager : MonoBehaviour
             return;
         }
         Instance = this;
-        // Optionally use: DontDestroyOnLoad(gameObject);
     }
 
     /// <summary>

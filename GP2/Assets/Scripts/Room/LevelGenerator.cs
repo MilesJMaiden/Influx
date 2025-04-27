@@ -3,7 +3,6 @@ using System.Linq;
 using Unity.AI.Navigation;
 using UnityEngine;
 using UnityEngine.UI;
-using static UnityEditor.Searcher.SearcherWindow.Alignment;
 
 public enum DoorDirection { Top, Bottom, Left, Right }
 
@@ -501,7 +500,6 @@ public class LevelGenerator : MonoBehaviour
             isCorridor: true);
         spawner.SpawnObjects();
 
-        // --- NEW: Add a NavMeshLink that covers the entire corridor.
         AddNavMeshLinkToCorridor(corridorRoom, vertical, corridorRoomWidth, corridorRoomHeight, corridorWidth);
     }
 

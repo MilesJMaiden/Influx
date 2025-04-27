@@ -7,8 +7,6 @@ using UnityEngine.UI;
 [RequireComponent(typeof(NavMeshAgent))]
 public class AlienController : MonoBehaviour
 {
-    enum State { Seek, Attack, Flee, Wander }
-
     // Sabotage ranges
     const float ComputerRange = 3f;
     const float BinRange = 5f;
@@ -27,8 +25,6 @@ public class AlienController : MonoBehaviour
     // If an agent is within this distance, trigger flee
     const float ThreatRange = 10f;
 
-    State _state = State.Wander;
-
     NavMeshAgent _nav;
     GameObject _highlight;
 
@@ -38,6 +34,9 @@ public class AlienController : MonoBehaviour
 
     // For wandering
     Vector3 _wanderDestination;
+
+    State _state = State.Wander;
+    enum State { Seek, Attack, Flee, Wander }
 
     void Awake()
     {

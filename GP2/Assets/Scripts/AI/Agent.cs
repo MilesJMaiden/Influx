@@ -1,5 +1,4 @@
-﻿// Agent.cs
-using System.Collections;
+﻿using System.Collections;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.AI;
@@ -39,7 +38,6 @@ public class Agent : MonoBehaviour
     public Slider fuelSlider;
     const float fuelDepleteRate = 0.01f;
     const float fuelRefuelAmount = 0.25f;
-    // add at the top, with your other consts:
     const float rockPickupRadius = 3f;
     const float tableProcessRadius = 3f;
     const float binDepositRadius = 3f;
@@ -261,9 +259,7 @@ public class Agent : MonoBehaviour
             TransitionTo(AgentState.Idle);
     }
 
-
     // —— Repair Logic ——
-
     private void TryAutoRepair()
     {
         Computer closest = null;
@@ -320,7 +316,6 @@ public class Agent : MonoBehaviour
     }
 
     // —— Rock→Table→Bin Pipeline ——
-
     private void RockPipelineBehavior()
     {
         switch (currentState)
@@ -420,7 +415,6 @@ public class Agent : MonoBehaviour
     }
 
     // —— Mouse Hover & Cursor ——
-
     private void OnMouseEnter()
     {
         if (SelectedAgent != this)
@@ -561,7 +555,6 @@ public class Agent : MonoBehaviour
     }
 
     // —— FSM Helpers ——
-
     private void TransitionTo(AgentState state)
     {
         currentState = state;

@@ -1,4 +1,3 @@
-// RockBin.cs
 using UnityEngine;
 
 public class RockBin : Interactable

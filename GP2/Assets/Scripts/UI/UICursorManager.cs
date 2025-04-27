@@ -1,5 +1,5 @@
 using UnityEngine;
-using Unity.VectorGraphics;  // Required for SVGImage
+using Unity.VectorGraphics;
 using UnityEngine.UI;
 
 public class UICursorManager : MonoBehaviour

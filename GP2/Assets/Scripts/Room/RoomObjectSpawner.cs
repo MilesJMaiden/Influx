@@ -308,8 +308,6 @@ public class RoomObjectSpawner : MonoBehaviour
         return allSucceeded;
     }
 
-
-
     /// <summary>
     /// Returns a random position within the safe area computed from the given margin.
     /// </summary>
