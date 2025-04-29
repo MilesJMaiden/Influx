@@ -46,7 +46,7 @@ Launch Unity Hub, click Add, navigate to the cloned folder, and open the project
 Run the Demo Scene
 In the Project window, open Assets/Scenes/MainMenu.unity and press ▶️ Play.
 
-🎮 Controls
+## 🎮 Controls
 
 Action	Input
 Pan Camera	W / A / S / D or Arrow keys
@@ -65,7 +65,8 @@ Select Agent	Click on an Agent
 
 Command Agent (Repair / Refuel / Trap)	Click on Interactable while Agent selected
 
-📐 Architecture & Key Classes
+
+## 📐 Architecture & Key Classes
 
 LevelGenerator: Procedural room layout, geometry, NavMesh baking.
 
