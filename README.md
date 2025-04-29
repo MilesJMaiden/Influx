@@ -1,4 +1,4 @@
-#Influx
+# Influx
 
 **A Procedural Multi-Agent Simulation Game in Unity**
 
