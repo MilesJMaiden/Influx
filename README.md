@@ -44,20 +44,29 @@ Open in Unity
 Launch Unity Hub, click Add, navigate to the cloned folder, and open the project.
 
 Run the Demo Scene
-In the Project window, open Assets/Scenes/Demo.unity and press ▶️ Play.
+In the Project window, open Assets/Scenes/MainMenu.unity and press ▶️ Play.
 
 🎮 Controls
 
 Action	Input
 Pan Camera	W / A / S / D or Arrow keys
+
 Relative Pan (camera-oriented)	Hold Right Mouse Button + WASD
+
 Zoom In/Out	Mouse Wheel
+
 Tilt/Yaw Camera	Hold Right Mouse Button + Move Mouse
+
 Center & Zoom to Level	Press F
+
 Pause/Unpause & Toggle Menu	Press Esc
+
 Select Agent	Click on an Agent
+
 Command Agent (Repair / Refuel / Trap)	Click on Interactable while Agent selected
+
 📐 Architecture & Key Classes
+
 LevelGenerator: Procedural room layout, geometry, NavMesh baking.
 
 LevelDesignSettings: ScriptableObject exposing room shape, size, and spawn distributions.
