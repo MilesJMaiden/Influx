@@ -2,8 +2,10 @@
 
 **A Procedural Multi-Agent Simulation Game in Unity**
 
-[![Watch the Demo](https://img.youtube.com/vi/tKH-TE7bzyk&t=4s/0.jpg)](https://www.youtube.com/watch?v=tKH-TE7bzyk&t=4s)  
-[Play on itch.io](https://milesjmaiden.itch.io/influx)
+Watch the Demo
+(https://img.youtube.com/vi/tKH-TE7bzyk&t=4s/0.jpg)](https://www.youtube.com/watch?v=tKH-TE7bzyk&t=4s)  
+Play on itch.io
+(https://milesjmaiden.itch.io/influx)
 
 ---
 
